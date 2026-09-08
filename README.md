@@ -1,7 +1,7 @@
-# Prelegal
-
 [![Deployed on Railway](https://img.shields.io/badge/deployed%20on-Railway-0B0D0E?style=flat&logo=railway)](https://railway.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+# Prelegal
 
 An AI chat that interviews you about a legal agreement and builds it from Common Paper's open, CC BY 4.0-licensed standard templates.
 
@@ -10,6 +10,20 @@ An AI chat that interviews you about a legal agreement and builds it from Common
 **Try it now:** https://prelegaldocumentapp-production.up.railway.app/
 
 The app is deployed and running with OpenRouter AI integration.
+
+## Features
+   - 📋 11 supported agreement types
+   - 🤖 Multi-turn AI interview
+   - 📥 Export as Markdown, PDF, or Word
+   - 🔐 User authentication & document isolation
+   - 🚀 Deploy-ready with Railway
+
+## Deploy Your Own
+   [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app)
+   
+   1. Fork this repo
+   2. Set OPENROUTER_API_KEY in Railway variables
+   3. Deploy
 
 ## What it does
 
