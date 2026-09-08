@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prelegal — AI-guided legal documents</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!-- ------------------------------------------------------------- auth -->
+    <div id="auth-screen" class="auth-screen">
+      <div class="auth-card">
+        <h1 class="brand">Prelegal</h1>
+        <p class="tagline">
+          Create standard legal agreements by talking them through, built on the
+          Common Paper open templates.
+        </p>
+
+        <div class="tabs" role="tablist">
+          <button id="tab-login" class="tab active" role="tab">Sign in</button>
+          <button id="tab-register" class="tab" role="tab">Create account</button>
+        </div>
+
+        <form id="auth-form" autocomplete="on">
+          <label id="name-label" class="hidden">
+            <span>Name</span>
+            <input type="text" id="displayName" autocomplete="name" />
+          </label>
+          <label>
+            <span id="email-label">Email</span>
+            <input type="email" id="email" required autocomplete="username" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" id="password" required minlength="8" autocomplete="current-password" />
+          </label>
+          <p id="auth-error" class="error hidden"></p>
+          <button type="submit" class="primary" id="auth-submit">Sign in</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- app -->
+    <div id="app" class="app hidden">
+      <aside class="sidebar">
+        <div class="sidebar-head">
+          <h1 class="brand small">Prelegal</h1>
+          <button id="new-doc" class="primary small">New document</button>
+          <p id="new-doc-error" class="error small hidden"></p>
+        </div>
+        <nav id="doc-list" class="doc-list" aria-label="Your documents"></nav>
+        <div class="sidebar-foot">
+          <span id="ai-badge" class="badge"></span>
+          <div class="user-row">
+            <span id="user-name" class="user-name"></span>
+            <button id="logout" class="link">Sign out</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div id="empty-state" class="empty-state">
+          <h2>What do you need to put in writing?</h2>
+          <p>
+            Start a new document and describe it in your own words — an NDA, a
+            SaaS contract, a data processing agreement. I'll ask what I need and
+            build it as we go.
+          </p>
+          <button id="empty-new-doc" class="primary">New document</button>
+          <div class="catalog">
+            <h3>Supported agreements</h3>
+            <ul id="catalog-list"></ul>
+          </div>
+        </div>
+
+        <section id="workspace" class="workspace hidden">
+          <header class="workspace-head">
+            <div>
+              <h2 id="doc-title">Document</h2>
+              <p id="doc-status" class="doc-status"></p>
+            </div>
+            <div class="workspace-actions">
+              <button id="toggle-preview" class="ghost">Preview</button>
+              <select id="download-format" aria-label="Download format">
+                <option value="md">Markdown (.md)</option>
+                <option value="pdf">PDF (.pdf)</option>
+                <option value="docx">Word (.docx)</option>
+              </select>
+              <button id="download" class="primary" disabled>Download</button>
+              <button id="delete-doc" class="ghost danger">Delete</button>
+            </div>
+          </header>
+
+          <div class="workspace-body">
+            <div class="chat-pane">
+              <div id="messages" class="messages" aria-live="polite"></div>
+              <form id="chat-form" class="chat-form">
+                <textarea
+                  id="chat-input"
+                  rows="2"
+                  placeholder="Describe what you need, or answer the question above…"
+                  aria-label="Message"
+                ></textarea>
+                <button type="submit" class="primary" id="send">Send</button>
+              </form>
+            </div>
+
+            <div id="side-panel" class="side-panel">
+              <div class="panel-tabs">
+                <button id="tab-fields" class="tab active">Fields</button>
+                <button id="tab-doc" class="tab">Document</button>
+              </div>
+              <div id="fields-panel" class="panel-content"></div>
+              <div id="doc-panel" class="panel-content hidden">
+                <pre id="doc-preview" class="doc-preview"></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
