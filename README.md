@@ -11,6 +11,15 @@ An AI chat that interviews you about a legal agreement and builds it from Common
 
 The app is deployed and running with OpenRouter AI integration.
 
+### Demo Account Instructions
+
+This is a **demo application** — no verification required. Sign up with (create an account):
+- Any name
+- Any email (doesn't need to be real)
+- Any password (minimum 8 characters)
+
+Every user gets their own private document set. Create multiple test accounts to see document isolation in action.
+
 ## Features
 
 - 📋 11 supported agreement types
