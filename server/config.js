@@ -38,7 +38,7 @@ loadDotEnv();
 export const PORT = Number(process.env.PORT || 3000);
 export const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'prelegal.db');
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
-export const MODEL = process.env.PRELEGAL_MODEL || process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5';
+export const MODEL = process.env.PRELEGAL_MODEL || process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
 /**
  * Force mock mode with PRELEGAL_AI_MODE=mock; otherwise use the real API
