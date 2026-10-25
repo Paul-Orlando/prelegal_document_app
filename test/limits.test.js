@@ -195,3 +195,21 @@ describe('changing your mind about the agreement type', () => {
     assert.equal((await start(c)).status, 429);
   });
 });
+
+describe('refunds only cover drafts from the last hour', () => {
+  // Found by Claude Code reviewing the user-test fixes: deleting an old empty
+  // draft refunded the visitor's most recent document.
+  test('deleting an empty draft older than an hour gives nothing back', async (t) => {
+    const c = new Client(srv.base, { ip: '10.9.5.1' });
+    const old = (await start(c)).data.document;
+    const realNow = Date.now;
+    t.after(() => { Date.now = realNow; });
+    Date.now = () => realNow() + 60 * 60 * 1000 + 1000; // an hour later
+    await start(c);
+    await start(c);
+    assert.equal((await start(c)).status, 429, 'two used this hour');
+    const del = await c.delete(`/api/documents/${old.id}`);
+    assert.equal(del.data.refunded, false);
+    assert.equal((await start(c)).status, 429, 'still at the limit');
+  });
+});

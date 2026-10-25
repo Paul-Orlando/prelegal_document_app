@@ -58,14 +58,21 @@ export function checkLimits(checks) {
 }
 
 /**
- * Give back one use of a limit, most recent first. Used when someone discards
- * a draft they never answered anything in (they changed their mind about the
- * agreement type). Only the per-visitor counter is refunded; the per-address
- * backstop never is, so this can't be used to get unlimited documents.
+ * Give back one use of a limit. Used when someone discards a draft they never
+ * answered anything in (they changed their mind about the agreement type).
+ * Only refunds when the draft was created inside the limit's window: an older
+ * draft no longer counts, so deleting it must not hand back a current one.
+ * Only the per-visitor counter is refunded; the per-address backstop never is.
+ * @param {string} key
+ * @param {number} createdAtMs  when the discarded draft was created
+ * @param {number} windowMs     the limit's window
  */
-export function refundLimit(key) {
+export function refundLimit(key, createdAtMs, windowMs) {
+  if (!(Date.now() - createdAtMs < windowMs)) return false;
   const hits = buckets.get(key);
-  if (hits?.length) hits.pop();
+  if (!hits?.length) return false;
+  hits.pop();
+  return true;
 }
 
 /** Forget every counter. For tests only. */

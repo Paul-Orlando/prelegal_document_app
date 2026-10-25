@@ -726,7 +726,11 @@ $('doc-select').addEventListener('change', (e) => {
     pickedByPointer = false;
     startDocument(e.target.value);
   } else {
+    // Changed from the keyboard (arrows, or picked from the open list with Enter):
+    // say how to start it, since nothing has happened yet.
+    const name = $('doc-select').selectedOptions[0]?.textContent;
     $('doc-select').setAttribute('aria-description', 'Press Enter to start this agreement');
+    if (name && e.target.value) toast(`Press Enter to start the ${name}`, 3500);
   }
 });
 $('doc-select').addEventListener('keydown', (e) => {

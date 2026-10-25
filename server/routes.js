@@ -183,8 +183,10 @@ router.delete('/documents/:id', requireAuth, (req, res) => {
   // A draft with no answers saved was a change of mind, not a test: give the
   // visitor that document back (the per-address backstop still counts it).
   const untouched = !Object.values(doc.values).some((v) => String(v ?? '').trim());
-  if (untouched) refundLimit(`doc:visitor:${req.user.id}`);
-  res.json({ ok: true, refunded: untouched });
+  const refunded = untouched
+    ? refundLimit(`doc:visitor:${req.user.id}`, new Date(doc.createdAt).getTime(), LIMITS.documentsPerVisitor.windowMs)
+    : false;
+  res.json({ ok: true, refunded });
 });
 
 /* ------------------------------------------------------------------- chat */
