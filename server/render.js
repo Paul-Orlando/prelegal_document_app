@@ -20,7 +20,7 @@ export function readStandardTerms(filename) {
   return text;
 }
 
-function formatDate(value) {
+export function formatDate(value) {
   if (!value) return '';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
@@ -60,7 +60,7 @@ function signatureBlock(lines, heading, fieldLabels) {
  * The two signing parties for a document type. Different agreements name their
  * parties differently (Provider/Customer, Company/Partner, Party 1/Party 2).
  */
-function partyLabels(spec, values) {
+export function partyLabels(spec, values) {
   const pick = (key, fallback) => {
     const v = values[key];
     return v && String(v).trim() ? String(v).trim() : fallback;

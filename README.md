@@ -71,7 +71,7 @@ starts the server in the background and writes its PID to `.data/server.pid`. Us
 - **Database** — SQLite via Node's built-in `node:sqlite` (no native dependency to compile). File lives at `.data/prelegal.db` by default.
 - **AI** — `server/ai/` defines a provider interface with two implementations: `openrouterProvider.js` (real calls to OpenRouter's Chat Completions API, with function calling) and `mockProvider.js` (deterministic script). `server/ai/index.js` picks one based on whether `OPENROUTER_API_KEY` is set.
 - **Document model** — `server/documentSpecs.js` defines the fields for each supported agreement, derived from the variables the underlying Common Paper Standard Terms actually reference. `server/render.js` turns field values into a Prelegal-authored cover page followed by the incorporated Standard Terms.
-- **Export** — `server/exporters.js` renders the same document to PDF (via `pdfkit`, with a small purpose-built markdown renderer — not a full CommonMark implementation) and to Word (via `markdown-it` → HTML → `html-to-docx`). `GET /api/documents/:id/download?format=md|pdf|docx` serves whichever format is requested.
+- **Export**: `server/docModel.js` parses the Standard Terms into numbered clauses (1. / 1.1 / (a)) and builds one document model; `server/pdfExport.js` (pdfkit) and `server/docxExport.js` (`docx`) typeset it with the Prelegal letterhead and logo, a Key Terms table, numbered Standard Terms, a signature page with drawn signature lines, a running header and "Page X of Y" footers. Unfinished documents are marked "Draft — not for signature". Libre Caslon (SIL Open Font License, `server/assets/fonts/`) is embedded in both formats. `GET /api/documents/:id/download?format=md|pdf|docx` serves whichever format is requested.
 - **Rate limiting** — `server/rateLimit.js` is a minimal in-memory limiter keyed by client IP, applied to new-document creation (3/hour). It's single-process and resets on restart, not a production rate limiter.
 
 Only the Mutual NDA repo publishes a fillable cover page upstream — every other Common Paper agreement is Standard Terms only, so Prelegal authors its own cover page for those, built from the variables each agreement's Standard Terms reference.
@@ -86,9 +86,9 @@ The firm shown in the app (Ashford & Kane LLP, its address, phone numbers, attor
 
 - Passwords are hashed with scrypt and sessions use random-token cookies — solid for a small deployment, but there's no rate limiting, email verification, or password reset flow.
 - No test suite yet; the flows above were verified manually end-to-end (registration, multi-user isolation, chat interview, preview, download) for this build.
-- `npm audit` reports a moderate advisory in Express's bundled `qs` (query-string parsing) — this app never parses query strings, so it isn't exploitable here, but a future Express major-version upgrade would clear it. It also reports a high-severity advisory in `image-size` (a transitive dependency of `html-to-docx`, used to size embedded images) — this app never embeds images in generated documents, so that parser is never invoked here.
+- `npm audit` reports a moderate advisory in Express's bundled `qs` (query-string parsing) — this app never parses query strings, so it isn't exploitable here, but a future Express major-version upgrade would clear it.
 - The rate limiter is per-process, in-memory state — restarting the server (or running more than one instance) resets/fragments the counts. Fine for a single demo instance, not for a real deployment.
-- The PDF export uses a small hand-rolled markdown renderer (headings, bold, tables, rules) rather than a full CommonMark-to-PDF pipeline, so it won't perfectly reproduce every markdown construct — it covers everything the templates in this app actually use.
+- Signature blocks are drawn as blank lines for wet or PDF signatures; there is no e-signature integration.
 
 ## License
 
