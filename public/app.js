@@ -14,12 +14,18 @@ const state = {
 /* -------------------------------------------------------------------- api */
 
 async function api(path, options = {}) {
-  const res = await fetch(`/api${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    ...options,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`/api${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      ...options,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+  } catch {
+    // The request never reached the server: no connection, or it dropped.
+    throw Object.assign(new Error("You seem to be offline. Check your connection and try again."), { offline: true });
+  }
   const isJson = (res.headers.get('content-type') || '').includes('application/json');
   const data = isJson ? await res.json() : null;
   if (!res.ok) throw Object.assign(new Error(data?.error || `Request failed (${res.status})`), { status: res.status, data });
@@ -147,6 +153,21 @@ function renderDrafts() {
   }
 }
 
+/** Home page: offer to continue the most recent draft. */
+function renderResume() {
+  const latest = state.documents.find((d) => d.specId && d.status !== 'complete');
+  const box = $('resume');
+  if (!latest) {
+    box.classList.add('hidden');
+    return;
+  }
+  const required = latest.fields.filter((f) => f.required).length;
+  const done = required - latest.missingRequired.length;
+  $('resume-text').textContent = `Your ${latest.specName} has ${done} of ${required} details filled in.`;
+  $('resume-btn').onclick = () => openDocument(latest.id);
+  box.classList.remove('hidden');
+}
+
 function closeDrafts() {
   $('drafts-menu').classList.add('hidden');
   $('drafts-btn').setAttribute('aria-expanded', 'false');
@@ -156,6 +177,7 @@ async function loadDocuments() {
   const { documents } = await api('/documents');
   state.documents = documents;
   renderDrafts();
+  renderResume();
 }
 
 /* ------------------------------------------------------------- workspace */
@@ -248,7 +270,7 @@ function readableDate(value) {
 
 function renderFields() {
   const doc = state.current;
-  const panel = $('fields-panel');
+  const panel = $('fields-list');
   panel.innerHTML = '';
   const fields = [...doc.fields].sort((a, b) => Number(b.required) - Number(a.required));
   for (const field of fields) {
@@ -256,6 +278,7 @@ function renderFields() {
     const filled = value !== undefined && value !== null && String(value).trim() !== '';
     const row = document.createElement('div');
     row.className = `field-row${filled ? ' filled' : ''}`;
+    row.setAttribute('role', 'listitem');
     row.innerHTML =
       `<span class="field-dot" aria-hidden="true"></span>` +
       `<div class="field-label">${escapeHtml(field.label)}${field.required ? '' : '<small>optional</small>'}</div>` +
@@ -297,7 +320,9 @@ async function refreshPreview() {
     const { html } = await api(`/documents/${doc.id}/preview`);
     $('doc-preview').innerHTML = html;
   } catch (err) {
-    $('doc-preview').textContent = `Couldn't load the preview: ${err.message}`;
+    $('doc-preview').textContent = err.offline
+      ? "The preview needs a connection. You seem to be offline; your answers are saved."
+      : `Couldn't load the preview: ${err.message}`;
   }
 }
 
@@ -341,8 +366,17 @@ async function startDocument(specId) {
     showWorkspace();
     return;
   }
-  if (state.sending) return;
+  if (state.sending || state.starting) {
+    // Never ignore a choice silently: say why, and show the current agreement again.
+    toast('One moment: still setting up your agreement. Try again when the first question appears.', 4000);
+    $('doc-select').value = state.current?.specId || '';
+    return;
+  }
   $('home-error').classList.add('hidden');
+  const name = specById(specId)?.name ?? 'agreement';
+  state.starting = true;
+  document.body.setAttribute('aria-busy', 'true');
+  toast(`Setting up your ${name}…`, 30000);
 
   try {
     const prev = state.current;
@@ -358,8 +392,14 @@ async function startDocument(specId) {
     showWorkspace();
     renderDocument();
     $('answer-input').value = '';
+    $('send-error').classList.add('hidden');
+    $('toast').classList.add('hidden');
     await kickoff();
-    await loadDocuments();
+    // The question is on screen: the person can choose again from here. The
+    // Drafts list refreshes in the background.
+    state.starting = false;
+    document.body.removeAttribute('aria-busy');
+    loadDocuments().catch(() => {});
   } catch (err) {
     const onHome = !$('home').classList.contains('hidden');
     if (onHome) {
@@ -369,6 +409,9 @@ async function startDocument(specId) {
       toast(err.message, err.data?.limit ? 9000 : 4000);
     }
     $('doc-select').value = state.current?.specId || '';
+  } finally {
+    state.starting = false;
+    document.body.removeAttribute('aria-busy');
   }
 }
 
@@ -385,6 +428,7 @@ async function send({ content = '', kickoff = false } = {}) {
       method: 'POST',
       body: kickoff ? { kickoff: true } : { content },
     });
+    $('send-error').classList.add('hidden');
     state.current = res.document;
     const reply = res.messages.filter((m) => m.role === 'assistant').pop();
     setThinking(false);
@@ -393,7 +437,16 @@ async function send({ content = '', kickoff = false } = {}) {
     loadDocuments();
   } catch (err) {
     setThinking(false);
-    showQuestion(err.data?.limit ? err.message : `That didn't go through: ${err.message}\n\nTry sending your answer again.`);
+    if (err.data?.limit) {
+      showQuestion(err.message);
+    } else {
+      // Keep the question on screen and the answer in the box; say what happened.
+      $('question-text').classList.remove('hidden');
+      $('send-error').textContent = err.offline
+        ? "Your answer wasn't sent: you seem to be offline. It's still in the box below; press Continue when you're back online."
+        : `Your answer wasn't sent: ${err.message} It's still in the box below; press Continue to try again.`;
+      $('send-error').classList.remove('hidden');
+    }
     if (content) $('answer-input').value = content;
   } finally {
     state.sending = false;
@@ -699,7 +752,6 @@ function applyTheme(theme) {
   if (dark) document.documentElement.dataset.theme = 'dark';
   else delete document.documentElement.dataset.theme;
   const btn = $('theme-btn');
-  btn.setAttribute('aria-label', dark ? 'Switch to day mode' : 'Switch to night mode');
   btn.title = dark ? 'Switch to day mode' : 'Switch to night mode';
   $('theme-label').textContent = dark ? 'Day mode' : 'Night mode';
   try {
@@ -1001,6 +1053,12 @@ for (const chip of document.querySelectorAll('#support-suggest .chip')) {
   chip.onclick = () => askSupport(chip.dataset.q);
 }
 
+$('callback-open').onclick = () => {
+  $('callback-done').classList.add('hidden');
+  $('callback-form').classList.remove('hidden');
+  $('callback-form').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  $('cb-name').focus();
+};
 $('callback-toggle').onclick = () => {
   $('callback-form').classList.toggle('hidden');
   $('cb-name').focus();

@@ -558,7 +558,7 @@ body.in-workspace .site-foot { display: none; }
   .topbar { grid-template-columns: auto 1fr; height: auto; padding: 10px 16px; gap: 10px; }
   .doc-picker { grid-column: 1 / -1; grid-row: 2; max-width: none; }
   .topbar-actions { justify-self: end; }
-  .bar-btn--help span, .theme-label { display: none; }
+  .bar-btn--help span, .theme-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .theme-btn { padding: 8px 10px; }
   .brand-firm { display: none; }
   .home { grid-template-columns: 1fr; padding: 40px 16px; gap: 40px; }
@@ -754,7 +754,7 @@ body.in-workspace .chat-launcher { bottom: 88px; }
 }
 @media (max-width: 860px) {
   .pricing { padding: 36px 16px; }
-  .bar-btn--pricing span { display: none; }
+  .bar-btn--pricing span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .tier ul { columns: 1; }
 }
 
@@ -765,7 +765,7 @@ body.in-workspace .chat-launcher { bottom: 88px; }
   .brand-name { font-size: 20px; }
 }
 @media (max-width: 360px) {
-  .brand-text { display: none; }
+  .brand-text { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 }
 
 /* ---------------------------------------------------- demo notice & dialogs */
@@ -841,3 +841,20 @@ body.in-workspace .chat-launcher { bottom: 88px; }
 .est-row--best span::after { content: " — cheapest"; color: var(--brass-deep); font-weight: 700; }
 .est-saving { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); }
 @media (max-width: 860px) { .estimator-form { grid-template-columns: 1fr; } }
+
+/* Drafting heading (an h1 for screen readers, styled as before) */
+h1.stage-doc { font-family: var(--sans); font-size: 15px; line-height: 1.4; letter-spacing: 0; }
+
+/* Home: continue a draft */
+.resume { margin-top: 26px; max-width: 520px; padding: 16px 18px; border-radius: 16px; background: var(--brass-soft); }
+.resume-title { margin: 0; font-weight: 700; }
+.resume-text { margin: 2px 0 12px; color: var(--ink-soft); font-size: 14.5px; }
+
+.help-callback { margin: 12px 0 0; font-size: 14px; color: var(--ink-soft); }
+
+.send-error { margin: 20px 0 -12px; padding: 10px 14px; border-radius: 12px; background: var(--brass-soft); color: var(--ink); font-size: 14px; }
+
+/* Phones: the Drafts menu spans the screen instead of hanging off the edge */
+@media (max-width: 860px) {
+  .menu { position: fixed; left: 12px; right: 12px; top: auto; width: auto; margin-top: 8px; }
+}

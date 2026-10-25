@@ -45,16 +45,16 @@
     </svg>
 
     <!-- -------------------------------------------------------- demo notice -->
-    <div id="demo-strip" class="demo-strip hidden" role="note">
+    <aside id="demo-strip" class="demo-strip hidden" aria-label="Demo notice">
       <strong>Demo only.</strong>
       <span class="demo-full">Prelegal shows what an AI legal-document service could look like. Don't use it for real legal matters: documents are watermarked samples and nothing here is legal advice.</span>
       <span class="demo-short">Samples only, not legal advice.</span>
       <button class="text-btn" id="demo-strip-more">Read more</button>
-    </div>
+    </aside>
 
     <!-- ------------------------------------------------------------ top bar -->
     <header class="topbar">
-      <a href="/" class="brand" id="brand-home" aria-label="Prelegal home">
+      <a href="/" class="brand" id="brand-home">
         <svg class="brand-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
         <span class="brand-text">
           <span class="brand-name">Prelegal</span>
@@ -76,15 +76,15 @@
           </button>
           <div id="drafts-menu" class="menu hidden" role="menu"></div>
         </div>
-        <button id="pricing-btn" class="bar-btn bar-btn--pricing" aria-label="Pricing and plans">
+        <button id="pricing-btn" class="bar-btn bar-btn--pricing">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.6 2.8H16a1.2 1.2 0 0 1 1.2 1.2v5.4a1.2 1.2 0 0 1-.35.85l-6.9 6.9a1.2 1.2 0 0 1-1.7 0L3.05 12a1.2 1.2 0 0 1 0-1.7l6.9-6.9a1.2 1.2 0 0 1 .65-.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.6" cy="6.4" r="1.3" fill="currentColor"/></svg>
           <span>Pricing</span>
         </button>
-        <button id="help-btn" class="bar-btn bar-btn--help" aria-controls="help" aria-expanded="false" aria-label="Help and support">
+        <button id="help-btn" class="bar-btn bar-btn--help" aria-controls="help" aria-expanded="false">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 11.5v-1a6.5 6.5 0 0 1 13 0v1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="11" width="3.5" height="5" rx="1.2" fill="currentColor"/><rect x="14" y="11" width="3.5" height="5" rx="1.2" fill="currentColor"/></svg>
           <span>Help &amp; support</span>
         </button>
-        <button id="theme-btn" class="bar-btn theme-btn" aria-label="Switch to night mode" title="Night mode">
+        <button id="theme-btn" class="bar-btn theme-btn" title="Switch to night mode">
           <svg class="moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.6A6.5 6.5 0 0 1 7.4 4.5a6.5 6.5 0 1 0 8.1 8.1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           <svg class="sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.8v2.2M10 16v2.2M1.8 10H4M16 10h2.2M4.2 4.2l1.6 1.6M14.2 14.2l1.6 1.6M4.2 15.8l1.6-1.6M14.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           <span id="theme-label" class="theme-label">Night mode</span>
@@ -111,6 +111,11 @@
               <button id="hero-start" class="btn btn--primary" disabled>Start drafting</button>
             </div>
             <p id="home-error" class="error hidden" role="alert"></p>
+          </div>
+          <div id="resume" class="resume hidden">
+            <p class="resume-title">Welcome back</p>
+            <p id="resume-text" class="resume-text"></p>
+            <button id="resume-btn" class="btn btn--primary">Continue your draft</button>
           </div>
         </div>
 
@@ -184,7 +189,7 @@
               <span id="seal-pct">0%</span>
             </div>
             <div>
-              <p class="stage-doc" id="stage-doc">Agreement</p>
+              <h1 class="stage-doc" id="stage-doc">Agreement</h1>
               <p class="stage-progress" id="stage-progress">Getting started</p>
             </div>
           </div>
@@ -197,6 +202,7 @@
             </div>
           </div>
 
+          <p id="send-error" class="send-error hidden" role="alert"></p>
           <form id="answer-form" class="answer">
             <label for="answer-input" class="sr-only">Your answer</label>
             <textarea id="answer-input" rows="3" placeholder="Type your answer…"></textarea>
@@ -228,12 +234,12 @@
           </header>
 
           <div class="paper-tabs" role="tablist">
-            <button id="tab-fields" class="ptab active" role="tab" aria-selected="true">Details</button>
-            <button id="tab-doc" class="ptab" role="tab" aria-selected="false">Preview</button>
+            <button id="tab-fields" class="ptab active" role="tab" aria-selected="true" aria-controls="fields-panel">Details</button>
+            <button id="tab-doc" class="ptab" role="tab" aria-selected="false" aria-controls="doc-panel">Preview</button>
           </div>
 
-          <div id="fields-panel" class="paper-body"></div>
-          <div id="doc-panel" class="paper-body hidden">
+          <div id="fields-panel" class="paper-body" role="tabpanel" aria-labelledby="tab-fields" tabindex="0"><div id="fields-list" role="list" aria-label="Details saved so far"></div></div>
+          <div id="doc-panel" class="paper-body hidden" role="tabpanel" aria-labelledby="tab-doc" tabindex="0">
             <article id="doc-preview" class="doc-preview"></article>
           </div>
 
@@ -274,16 +280,16 @@
 
     <!-- ------------------------------------------------- help & support -->
     <div id="help-scrim" class="scrim hidden"></div>
-    <aside id="help" class="help" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
-      <header class="help-head">
+    <div id="help" class="help" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+      <div class="help-head">
         <h2 id="help-title">Help &amp; support</h2>
         <button id="help-close" class="icon-btn" aria-label="Close help">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         </button>
-      </header>
+      </div>
 
       <div class="help-body">
-        <section class="help-call">
+        <section class="help-call" aria-label="Call us">
           <a id="call-firm" class="call-card" href="tel:+14045550142">
             <span class="call-label">Call the firm</span>
             <span class="call-number" id="call-firm-number">(404) 555-0142</span>
@@ -295,6 +301,7 @@
             <span class="call-sub" id="call-desk-hours">Monday–Friday, 8:00 am – 7:00 pm ET</span>
           </a>
         </section>
+        <p class="help-callback">Prefer us to call you? <button class="text-btn" id="callback-open">Request a callback</button></p>
 
         <section class="assistant" aria-labelledby="assistant-title">
           <h3 id="assistant-title">Ask the support assistant</h3>
@@ -353,7 +360,7 @@
           <p><a id="help-email" href="mailto:counsel@ashfordkane.example">counsel@ashfordkane.example</a></p>
         </section>
       </div>
-    </aside>
+    </div>
 
     <!-- ---------------------------------------------------- chat assistant -->
     <button id="chat-launcher" class="chat-launcher" aria-controls="chatbot" aria-expanded="false">
@@ -362,7 +369,7 @@
     </button>
 
     <section id="chatbot" class="chatbot" role="dialog" aria-labelledby="chatbot-title" hidden>
-      <header class="chatbot-head">
+      <div class="chatbot-head">
         <svg class="bot-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
         <div>
           <p class="chatbot-title" id="chatbot-title">Prelegal assistant</p>
@@ -376,7 +383,7 @@
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
         </div>
-      </header>
+      </div>
       <div id="chatbot-log" class="chatbot-log" aria-live="polite"></div>
       <div id="chatbot-suggest" class="suggest">
         <button class="chip" data-q="Which agreement do I need?">Which agreement do I need?</button>

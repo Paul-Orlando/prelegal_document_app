@@ -25,7 +25,7 @@ Fix what fails, re-run, and keep each result file: the before-and-after reports 
 
 ## 3. User test
 
-A simulated walkthrough with 3 participants (phone, laptop with the assistant first, keyboard only in night mode) was run on 2026-10-25 and found 12 problems, all fixed: see `docs/user_test/summary_simulated_2026-10-25.md`. It isn't a substitute for real people.
+A simulated walkthrough with 3 participants (phone, laptop with the assistant first, keyboard only in night mode) was run on 2026-10-25 and found 12 problems, all fixed: see `docs/user_test/summary_simulated_2026-10-25.md`. A second round with 3 new participants (tablet at 125% zoom; screen reader, with an axe-core audit of every screen; phone on a slow connection) found 12 more, all fixed, taking automated accessibility violations from 7 kinds to 0: see `docs/user_test/summary_simulated_round2_2026-10-25.md`. Neither is a substitute for real people.
 
 Run `docs/user_test/script.md` with 3 to 5 people, record results in `results_template.csv`, and write up `summary_template.md`, including the changes made because of feedback.
 

@@ -158,3 +158,45 @@ describe('unexpected errors', () => {
     assert.doesNotMatch(sent.error, /SQLITE|secret/);
   });
 });
+
+describe('accessibility and findability (second simulated user test)', () => {
+  const page = async () => (await fetch(`${srv.base}/`)).text();
+
+  test('top-bar buttons are named by their visible text, for speech control', async () => {
+    const html = await page();
+    for (const id of ['brand-home', 'pricing-btn', 'help-btn', 'theme-btn']) {
+      const tag = html.match(new RegExp(`<(a|button)[^>]*id="${id}"[^>]*>`))[0];
+      assert.doesNotMatch(tag, /aria-label=/, `${id} should take its name from its text`);
+    }
+  });
+
+  test('the drafting screen has a main heading', async () => {
+    assert.match(await page(), /<h1 class="stage-doc" id="stage-doc">/);
+  });
+
+  test('Details and Preview are proper tabs, and their panels can be reached by keyboard', async () => {
+    const html = await page();
+    assert.match(html, /id="tab-fields"[^>]*aria-controls="fields-panel"/);
+    assert.match(html, /id="tab-doc"[^>]*aria-controls="doc-panel"/);
+    assert.match(html, /id="fields-panel"[^>]*role="tabpanel"[^>]*tabindex="0"/);
+    assert.match(html, /id="doc-panel"[^>]*role="tabpanel"[^>]*tabindex="0"/);
+    assert.match(html, /id="fields-list" role="list"/);
+  });
+
+  test('the demo notice is a named region, and dialogs add no extra page banners', async () => {
+    const html = await page();
+    assert.match(html, /<aside id="demo-strip"[^>]*aria-label="Demo notice"/);
+    assert.match(html, /<div id="help" class="help" role="dialog"/);
+    assert.doesNotMatch(html, /<header class="(help|chatbot)-head"/);
+  });
+
+  test('a callback can be requested from Help & support without a chat handoff', async () => {
+    const html = await page();
+    const help = html.slice(html.indexOf('id="help"'), html.indexOf('id="team-title"'));
+    assert.match(help, /id="callback-open"[^>]*>Request a callback</);
+  });
+
+  test('returning visitors get a Continue your draft card', async () => {
+    assert.match(await page(), /id="resume"[\s\S]*Continue your draft/);
+  });
+});

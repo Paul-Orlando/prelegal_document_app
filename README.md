@@ -1,5 +1,5 @@
 [![Deployed on Railway](https://img.shields.io/badge/deployed%20on-Railway-0B0D0E?style=flat&logo=railway)](https://prelegaldocumentapp-production.up.railway.app/)
-[![Tests](https://img.shields.io/badge/tests-164%20passing-2f7d4f?style=flat)](docs/TESTING.md)
+[![Tests](https://img.shields.io/badge/tests-171%20passing-2f7d4f?style=flat)](docs/TESTING.md)
 [![Assistant evaluation](https://img.shields.io/badge/assistant%20evaluation-99%25-b5862a?style=flat)](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -36,7 +36,7 @@ An AI-guided legal document app for a fictional Atlanta law firm, Ashford & Kane
 
 Three layers, the same approach as Gatewell Parts Desk. Details in [docs/TESTING.md](docs/TESTING.md).
 
-**1. Automated tests: 164, free, no API key.** They run against a throwaway database with a scripted stand-in for the model, and cover visitor isolation, every usage limit, the interview, Ask Prelegal and help desk handoff, pricing, the paywall, PDF and Word exports for all 11 agreements, sample marking, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are committed. They found and fixed two real bugs along the way.
+**1. Automated tests: 171, free, no API key.** They run against a throwaway database with a scripted stand-in for the model, and cover visitor isolation, every usage limit, the interview, Ask Prelegal and help desk handoff, pricing, the paywall, PDF and Word exports for all 11 agreements, sample marking, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are committed. They found and fixed two real bugs along the way.
 
 **2. Assistant evaluation: 84% → 99%.** 45 graded questions in 7 groups, 3 runs each, against the real model (`openai/gpt-4o-mini`). The interviewer is graded on what it actually saved to the document, not just on its wording; Ask Prelegal on facts, prices, handoffs and refusals.
 
@@ -51,7 +51,7 @@ Three layers, the same approach as Gatewell Parts Desk. Details in [docs/TESTING
 
 The interviewer passed every run from the start. The baseline failures were all in Ask Prelegal: it flagged ordinary answers for help desk handoff, named the wrong attorney, and wrote a poem when asked for one. The fixes were clearer instructions plus two server-side checks that don't rely on the model obeying them: a handoff only counts if the reply actually gives the help desk's number, and the View plans button only shows if the reply actually states a price. The one remaining failure was a correct answer the grader didn't recognise; after widening that check (logged in [eval/SCORING_CHANGES.md](eval/SCORING_CHANGES.md)), re-grading the saved answers gives 135 of 135. Full reports: [baseline](eval/results/2026-10-25_openai-gpt-4o-mini.md), [after fixes](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes.md), [rescored](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes_rescored.md).
 
-**3. User testing.** A 20-minute session script with tasks done with and without the assistant, plus results and summary templates in [docs/user_test/](docs/user_test/), and a five-minute [demo script](docs/DEMO_SCRIPT.md). A simulated walkthrough with three participants (on a phone, on a laptop using the assistant first, and keyboard-only in night mode) found 12 problems, all fixed; the worst were arrow keys on the agreement menu starting a new document on every press, and the page sliding sideways on phones. [Summary](docs/user_test/summary_simulated_2026-10-25.md). Testing with real people is the next step.
+**3. User testing.** A 20-minute session script with tasks done with and without the assistant, plus results and summary templates in [docs/user_test/](docs/user_test/), and a five-minute [demo script](docs/DEMO_SCRIPT.md). Two rounds of simulated walkthroughs with six participants found and fixed 24 problems. Round 1 (phone, laptop using the assistant first, keyboard-only in night mode) found the worst: arrow keys on the agreement menu starting a new document on every press, and the page sliding sideways on phones ([summary](docs/user_test/summary_simulated_2026-10-25.md)). Round 2 (tablet at 125% zoom, screen reader, phone on a slow connection) took automated accessibility violations (axe-core, WCAG 2.1 AA) from 7 kinds to 0, and added a "Welcome back" card and an always-visible callback request ([summary](docs/user_test/summary_simulated_round2_2026-10-25.md)). Testing with real people is the next step.
 
 ## Run it locally
 
@@ -65,7 +65,7 @@ npm start
 Open http://localhost:3000. Without an API key the app uses a scripted interviewer, so everything works for free. For the real AI, copy `.env.example` to `.env` and set `OPENROUTER_API_KEY` (from https://openrouter.ai/keys). If the AI service fails mid-conversation, the app falls back to the scripted interviewer for that turn instead of breaking.
 
 ```
-npm test                                # 164 automated tests, free
+npm test                                # 171 automated tests, free
 npm run eval -- --limit 3 --runs 1      # assistant smoke test, about $0.01
 npm run eval                            # full evaluation, 45 questions × 3 runs, about $0.07
 ```
