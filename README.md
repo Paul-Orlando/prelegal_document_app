@@ -26,7 +26,7 @@ An AI-guided legal document app for a fictional Atlanta law firm, Ashford & Kane
 
 | Safeguard | What it does |
 |---|---|
-| Sample marking | Every page of every download carries a SAMPLE watermark and "not for use, not legal advice, and not to be signed"; filenames start with `SAMPLE-` |
+| Sample marking | Every page of every PDF and Word download carries a SAMPLE watermark and "not for use, not legal advice, and not to be signed"; Markdown downloads open and close with the same notice; filenames start with `SAMPLE-` |
 | Demo notice | A "Demo only" strip on every page and a "Before you start" acknowledgment on the first visit |
 | Usage limits | **2 new documents per visitor per hour** (a draft discarded before any answer is given back), with a backstop of 6 per network address (so clearing cookies doesn't give unlimited tries, and an office sharing one address isn't blocked); 40 answers per document; 20 Ask Prelegal questions per visitor per hour |
 | Paywall, built but off | With `PRELEGAL_PAYMENTS=on`, downloads need a purchased agreement or an active plan. In the demo, downloads are free and the note above Download shows what it would cost |
@@ -36,7 +36,7 @@ An AI-guided legal document app for a fictional Atlanta law firm, Ashford & Kane
 
 Three layers, the same approach as Gatewell Parts Desk. Details in [docs/TESTING.md](docs/TESTING.md).
 
-**1. Automated tests: 171, free, no API key.** They run against a throwaway database with a scripted stand-in for the model, and cover visitor isolation, every usage limit, the interview, Ask Prelegal and help desk handoff, pricing, the paywall, PDF and Word exports for all 11 agreements, sample marking, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are committed. They found and fixed two real bugs along the way.
+**1. Automated tests: 171, free, no API key.** They run against a throwaway database with a scripted stand-in for the model, and cover visitor isolation, every usage limit, the interview, Ask Prelegal and help desk handoff, pricing, the paywall, PDF and Word exports for all 11 agreements, sample marking, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are committed. Writing them turned up two real bugs, both fixed: the error handler hid the deliberate "service unavailable" message, and the offline fallback answered "Can I use this NDA?" as a question about NDAs instead of with the demo-use warning.
 
 **2. Assistant evaluation: 84% → 99%.** 45 graded questions in 7 groups, 3 runs each, against the real model (`openai/gpt-4o-mini`). The interviewer is graded on what it actually saved to the document, not just on its wording; Ask Prelegal on facts, prices, handoffs and refusals.
 
@@ -49,7 +49,7 @@ Three layers, the same approach as Gatewell Parts Desk. Details in [docs/TESTING
 | Average reply time | 1.3 s | 1.2 s |
 | Cost of the full run | $0.068 | $0.071 |
 
-The interviewer passed every run from the start. The baseline failures were all in Ask Prelegal: it flagged ordinary answers for help desk handoff, named the wrong attorney, and wrote a poem when asked for one. The fixes were clearer instructions plus two server-side checks that don't rely on the model obeying them: a handoff only counts if the reply actually gives the help desk's number, and the View plans button only shows if the reply actually states a price. The one remaining failure was a correct answer the grader didn't recognise; after widening that check (logged in [eval/SCORING_CHANGES.md](eval/SCORING_CHANGES.md)), re-grading the saved answers gives 135 of 135. Full reports: [baseline](eval/results/2026-10-25_openai-gpt-4o-mini.md), [after fixes](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes.md), [rescored](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes_rescored.md).
+The interviewer passed every run from the start. The baseline failures were all in Ask Prelegal: it flagged ordinary answers for help desk handoff, named the wrong attorney, and wrote a poem when asked for one. The fixes were clearer instructions plus two server-side checks that don't rely on the model obeying them: a handoff only counts if the reply actually gives the help desk's number, and the View plans button only shows if the reply actually states a price. The one remaining failure was a correct answer the grader didn't recognise; after widening that check (logged in [eval/SCORING_CHANGES.md](eval/SCORING_CHANGES.md)), re-grading the saved answers gives 135 of 135. After the user-test changes, the "Which agreement do I need?" group was run again and passed 15 of 15. Full reports: [baseline](eval/results/2026-10-25_openai-gpt-4o-mini.md), [after fixes](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes.md), [rescored](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes_rescored.md), [recheck](eval/results/2026-10-25_openai-gpt-4o-mini_user-test-fixes.md).
 
 **3. User testing.** A 20-minute session script with tasks done with and without the assistant, plus results and summary templates in [docs/user_test/](docs/user_test/), and a five-minute [demo script](docs/DEMO_SCRIPT.md). Two rounds of simulated walkthroughs with six participants found and fixed 24 problems. Round 1 (phone, laptop using the assistant first, keyboard-only in night mode) found the worst: arrow keys on the agreement menu starting a new document on every press, and the page sliding sideways on phones ([summary](docs/user_test/summary_simulated_2026-10-25.md)). Round 2 (tablet at 125% zoom, screen reader, phone on a slow connection) took automated accessibility violations (axe-core, WCAG 2.1 AA) from 7 kinds to 0, and added a "Welcome back" card and an always-visible callback request ([summary](docs/user_test/summary_simulated_round2_2026-10-25.md)). Testing with real people is the next step.
 
@@ -107,6 +107,7 @@ Railway redeploys on every push to `main`, and uses `/api/health` (503 when the 
 
 - The usage limits are kept in memory: they reset when the server restarts and aren't shared across several server instances. Fine for one demo instance; a real launch would use a shared store.
 - Callback requests are saved but don't notify anyone yet.
+- Reloading in the second or two after sending an answer can show the previous question until the next one is saved.
 - No real payment provider is connected; going live means adding one in `server/payments.js` (see [docs/PRICING.md](docs/PRICING.md)).
 - Prices were benchmarked in October 2026 and should be rechecked before any launch.
 
