@@ -47,7 +47,8 @@
     <!-- -------------------------------------------------------- demo notice -->
     <div id="demo-strip" class="demo-strip hidden" role="note">
       <strong>Demo only.</strong>
-      <span>Prelegal shows what an AI legal-document service could look like. Don't use it for real legal matters: documents are watermarked samples and nothing here is legal advice.</span>
+      <span class="demo-full">Prelegal shows what an AI legal-document service could look like. Don't use it for real legal matters: documents are watermarked samples and nothing here is legal advice.</span>
+      <span class="demo-short">Samples only, not legal advice.</span>
       <button class="text-btn" id="demo-strip-more">Read more</button>
     </div>
 
@@ -138,6 +139,18 @@
 
         <div class="plan-grid" id="plan-grid"></div>
 
+        <section class="estimator" aria-labelledby="estimator-title">
+          <h2 id="estimator-title">Work out the cheapest option</h2>
+          <form id="estimator-form" class="estimator-form">
+            <label><span>Essential agreements</span><input id="est-essential" type="number" min="0" max="500" value="0" inputmode="numeric" /></label>
+            <label><span>Commercial agreements</span><input id="est-commercial" type="number" min="0" max="500" value="10" inputmode="numeric" /></label>
+            <label><span>Over the next</span>
+              <select id="est-months"><option value="12">12 months</option><option value="6">6 months</option></select>
+            </label>
+          </form>
+          <div id="estimator-result" class="estimator-result" aria-live="polite"></div>
+        </section>
+
         <div class="pricing-detail">
           <section class="price-table" aria-labelledby="per-doc-title">
             <h2 id="per-doc-title">Price per agreement</h2>
@@ -191,6 +204,7 @@
               <p class="answer-hint">Enter to continue, Shift+Enter for a new line</p>
               <div class="answer-buttons">
                 <button type="button" id="finish-btn" class="btn btn--quiet hidden">I'm done</button>
+                <button type="button" id="stage-download" class="btn btn--quiet hidden">Download</button>
                 <button type="submit" id="answer-submit" class="btn btn--primary">Continue</button>
               </div>
             </div>

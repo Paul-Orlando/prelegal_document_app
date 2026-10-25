@@ -124,6 +124,28 @@ export function pricingView() {
   };
 }
 
+/**
+ * The cheapest way to pay for a number of agreements over a period: one at a
+ * time, or enough plans to cover the period. Used by the Pricing page estimator.
+ * @param {{essential: number, commercial: number, months: 6|12}} input
+ */
+export function cheapestOption({ essential = 0, commercial = 0, months = 12 }) {
+  const e = Math.max(0, Math.min(500, Math.floor(Number(essential) || 0)));
+  const c = Math.max(0, Math.min(500, Math.floor(Number(commercial) || 0)));
+  const m = Number(months) === 6 ? 6 : 12;
+  const [ess, com] = PRICING.tiers;
+  const options = [
+    { id: 'single', label: 'One at a time', cost: e * ess.price + c * com.price },
+    ...PRICING.plans.map((p) => {
+      const count = Math.ceil(m / p.months);
+      return { id: p.id, label: count > 1 ? `${count} × ${p.name}` : p.name, cost: count * p.price };
+    }),
+  ];
+  const best = options.reduce((a, b) => (b.cost < a.cost ? b : a));
+  const single = options[0].cost;
+  return { essential: e, commercial: c, months: m, options, best: best.id, saving: Math.max(0, single - best.cost) };
+}
+
 const usd = (n) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 
 /** Plain-text summary for the support assistant's system prompt. */

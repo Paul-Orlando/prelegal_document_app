@@ -78,9 +78,16 @@ const [SIX, TWELVE] = PRICING.plans;
 
 const FAQ = [
   {
-    match: /\b(can|may|could|should) (i|we) (use|sign|send|rely)|is (this|it) (legal|valid|binding|enforceable)|real (contract|agreement|matter)/i,
+    // A question about using a document made here, not a question about which document to sign.
+    match: /\b(can|may|could|should) (i|we) (use|sign|send|rely on) (this|it|the|my|our|that)\b|is (this|it) (legal|valid|binding|enforceable)|real (contract|agreement|matter|client)/i,
     reply:
       'No. Prelegal is a demo, and every download is a watermarked sample marked not for use. Please don\'t sign or rely on it. For a real agreement, speak to a licensed attorney.',
+  },
+  // Must stay below the demo-sample rule: "Can I use this NDA?" is a use question, not a recommendation.
+  {
+    match: /confidential|nda\b|non-?disclosure|share (our|my|secret|sensitive)/i,
+    reply:
+      'For sharing confidential information before you work together, start with a Mutual Non-Disclosure Agreement. Both sides can share information and both are bound to protect it.',
   },
   {
     match: /attorney review|review cost|lawyer review cost/i,
@@ -88,7 +95,7 @@ const FAQ = [
     reply: `An attorney review is ${usd(PRICING.attorneyReview.price)} per agreement, or ${usd(PRICING.attorneyReview.memberPrice)} for plan members. The 6-month plan includes 1 review and the 12-month plan includes 3.`,
   },
   {
-    match: /price|pricing|cost|how much|plan|subscri|per document|pay\b|fee/i,
+    match: /\b(price|prices|pricing|cost|costs|how much|subscription|subscribe|per document|pay|fee|fees)\b|\b(6|12|six|twelve)[- ]month\b|\bplans? (cost|price)|\b(what|which) plans?\b|\bplans? (do|are)\b/i,
     pricing: true,
     reply:
       `Single agreements are ${usd(ESS.price)} (Essential, such as an NDA) or ${usd(COM.price)} (Commercial, such as a Cloud Service Agreement). ` +
@@ -168,6 +175,20 @@ export function interpretReply(raw) {
     escalate: String(raw ?? '').includes(ESCALATE) && mentionsHelpDesk,
     showPricing: String(raw ?? '').includes(PRICING_MARK) && /\$\s?\d/.test(text),
   };
+}
+
+/**
+ * Agreements the reply recommends, so the chat can offer "Start …" buttons.
+ * Matched on full names (and NDA / DPA / BAA) in the reply itself. Pricing
+ * answers mention agreements only as examples, so they get no buttons.
+ */
+const SHORT_NAMES = { 'mutual-nda': /\b(NDA|non-disclosure agreement)\b/i, 'data-processing-agreement': /\bDPA\b/, 'business-associate-agreement': /\bBAA\b/ };
+export function suggestedAgreements(text, { showPricing = false } = {}) {
+  if (showPricing || /\$\s?\d/.test(text)) return [];
+  const found = DOCUMENT_SPECS.filter(
+    (s) => new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text) || SHORT_NAMES[s.id]?.test(text),
+  );
+  return found.length && found.length <= 2 ? found.map((s) => ({ id: s.id, name: s.name })) : [];
 }
 
 /* -------------------------------------------------------------------- main */

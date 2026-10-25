@@ -128,3 +128,38 @@ describe('Ask Prelegal: guards on the model\'s markers', () => {
     assert.match(SUPPORT_SYSTEM, /When, and only when, your reply states prices/);
   });
 });
+
+describe('Ask Prelegal: Start buttons for recommended agreements', () => {
+  // Found in the user test: people asked the chat to set up an agreement, and it couldn't.
+  test('a recommendation offers to start that agreement', async () => {
+    const { suggestedAgreements } = await import('../server/ai/support.js');
+    assert.deepEqual(suggestedAgreements('Use a Data Processing Agreement (DPA).').map((a) => a.id), ['data-processing-agreement']);
+    assert.deepEqual(suggestedAgreements('Start with an NDA.').map((a) => a.id), ['mutual-nda']);
+    assert.deepEqual(
+      suggestedAgreements('Use a Cloud Service Agreement, plus a DPA for the personal data.').map((a) => a.id),
+      ['cloud-service-agreement', 'data-processing-agreement'],
+    );
+  });
+
+  test('pricing answers and long lists get no buttons', async () => {
+    const { suggestedAgreements } = await import('../server/ai/support.js');
+    assert.deepEqual(suggestedAgreements('An NDA is $49 and a Cloud Service Agreement is $99.'), []);
+    assert.deepEqual(suggestedAgreements('Options: Pilot Agreement, Design Partner Agreement or Software License Agreement.'), []);
+  });
+
+  test('the chat endpoint returns the suggestions, and none with a help desk handoff', async () => {
+    const { Client, startServer } = await import('./helpers.js');
+    const srv = await startServer();
+    try {
+      const c = new Client(srv.base);
+      const ask = (content) => c.post('/api/support/chat', { messages: [{ role: 'user', content }] });
+      const rec = await ask("We're about to share confidential plans with a partner. What should we sign?");
+      assert.deepEqual(rec.data.agreements.map((a) => a.id), ['mutual-nda']);
+      assert.equal(rec.data.showPricing, false, '"plans" in the question is not a pricing question');
+      const hand = await ask('my invoice is wrong');
+      assert.deepEqual(hand.data.agreements, []);
+    } finally {
+      await srv.close();
+    }
+  });
+});

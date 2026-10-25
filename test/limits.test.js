@@ -161,3 +161,37 @@ describe('switched off for evaluation runs', () => {
     for (let i = 0; i < 5; i++) assert.equal((await start(c)).status, 201);
   });
 });
+
+describe('changing your mind about the agreement type', () => {
+  // Found in the user test: picking the wrong agreement and switching used up
+  // one of the visitor's 2 documents.
+  test('discarding a draft with no answers gives the visitor that document back', async () => {
+    const c = new Client(srv.base, { ip: '10.9.4.1' });
+    const first = (await start(c)).data.document;
+    const del = await c.delete(`/api/documents/${first.id}`);
+    assert.equal(del.data.refunded, true);
+    assert.equal((await start(c, 'cloud-service-agreement')).status, 201);
+    assert.equal((await start(c, 'pilot-agreement')).status, 201);
+    assert.equal((await start(c)).status, 429);
+  });
+
+  test('a draft with answers in it still counts after being deleted', async () => {
+    const c = new Client(srv.base, { ip: '10.9.4.2' });
+    const doc = (await start(c)).data.document;
+    await c.patch(`/api/documents/${doc.id}`, { values: { party1: 'Duck LLC' } });
+    assert.equal((await c.delete(`/api/documents/${doc.id}`)).data.refunded, false);
+    await start(c);
+    assert.equal((await start(c)).status, 429);
+  });
+
+  test('refunds never lift the per-address backstop', async () => {
+    const ip = '10.9.4.3';
+    const c = new Client(srv.base, { ip });
+    for (let i = 0; i < LIMITS.documentsPerAddress.max; i++) {
+      const doc = (await start(c)).data.document;
+      assert.ok(doc, `document ${i + 1}`);
+      await c.delete(`/api/documents/${doc.id}`);
+    }
+    assert.equal((await start(c)).status, 429);
+  });
+});

@@ -202,6 +202,8 @@ function renderProgress() {
     : `${doc.missingRequired.length} required detail${doc.missingRequired.length === 1 ? '' : 's'} to go`;
   $('download').disabled = !doc.specId;
   $('finish-btn').classList.toggle('hidden', !(doc.isComplete && doc.status !== 'complete'));
+  // Once everything required is in, offer the download right where the person is looking.
+  $('stage-download').classList.toggle('hidden', !doc.isComplete);
   renderPriceNote(doc);
   $('doc-select').value = doc.specId || '';
 }
@@ -237,6 +239,13 @@ function renderPriceNote(doc) {
   note.classList.remove('hidden');
 }
 
+/** "2026-11-01" → "November 1, 2026", as in the document; anything else unchanged. */
+function readableDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return value;
+  const d = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+}
+
 function renderFields() {
   const doc = state.current;
   const panel = $('fields-panel');
@@ -250,7 +259,7 @@ function renderFields() {
     row.innerHTML =
       `<span class="field-dot" aria-hidden="true"></span>` +
       `<div class="field-label">${escapeHtml(field.label)}${field.required ? '' : '<small>optional</small>'}</div>` +
-      `<div class="field-value">${filled ? escapeHtml(value) : 'Not answered yet'}</div>`;
+      `<div class="field-value">${filled ? escapeHtml(field.type === 'date' ? readableDate(value) : value) : 'Not answered yet'}</div>`;
     panel.appendChild(row);
   }
 }
@@ -523,7 +532,41 @@ function renderPricing() {
   for (const btn of document.querySelectorAll('#pricing [data-plan-request]')) btn.onclick = () => requestPlan(btn.dataset.planRequest);
 }
 
+let estimateTimer;
+async function renderEstimate() {
+  const q = new URLSearchParams({
+    essential: $('est-essential').value || 0,
+    commercial: $('est-commercial').value || 0,
+    months: $('est-months').value,
+  });
+  try {
+    const r = await api(`/pricing/estimate?${q}`);
+    $('estimator-result').innerHTML =
+      r.options
+        .map(
+          (o) =>
+            `<div class="est-row${o.id === r.best ? ' est-row--best' : ''}"><span>${escapeHtml(o.label)}</span><strong>${money(o.cost)}</strong></div>`,
+        )
+        .join('') +
+      (r.saving > 0
+        ? `<p class="est-saving">That saves ${money(r.saving)} compared with buying ${r.essential + r.commercial} agreement${r.essential + r.commercial === 1 ? '' : 's'} one at a time.</p>`
+        : r.essential + r.commercial > 0
+          ? '<p class="est-saving">Buying one at a time is cheapest for this many.</p>'
+          : '');
+  } catch {
+    $('estimator-result').textContent = '';
+  }
+}
+for (const id of ['est-essential', 'est-commercial', 'est-months']) {
+  $(id).addEventListener('input', () => {
+    clearTimeout(estimateTimer);
+    estimateTimer = setTimeout(renderEstimate, 200);
+  });
+}
+$('estimator-form').addEventListener('submit', (e) => e.preventDefault());
+
 function showPricing() {
+  renderEstimate();
   closeDrafts();
   $('home').classList.add('hidden');
   $('workspace').classList.add('hidden');
@@ -558,7 +601,12 @@ function renderSupport() {
     .map(
       (m) =>
         `<div class="s-msg ${m.role}">${inline(escapeHtml(m.content))}</div>` +
-        (m.showPricing ? '<div class="s-actions"><button class="chip" data-show-pricing>View plans and prices</button></div>' : ''),
+        (m.showPricing ? '<div class="s-actions"><button class="chip" data-show-pricing>View plans and prices</button></div>' : '') +
+        (m.agreements?.length
+          ? `<div class="s-actions">${m.agreements
+              .map((a) => `<button class="chip" data-start-spec="${escapeHtml(a.id)}">Start a ${escapeHtml(a.name)}</button>`)
+              .join('')}</div>`
+          : ''),
     )
     .join('');
   const typing = state.supportBusy ? '<div class="s-msg assistant typing">Looking into it…</div>' : '';
@@ -569,6 +617,13 @@ function renderSupport() {
 
   const botLog = $('chatbot-log');
   botLog.innerHTML = `<div class="s-msg assistant">${escapeHtml(GREETING)}</div>` + html + typing;
+  for (const btn of document.querySelectorAll('#chatbot-log [data-start-spec], #support-log [data-start-spec]')) {
+    btn.onclick = () => {
+      if (!$('help').hidden) closeHelp();
+      if (window.matchMedia('(max-width: 860px)').matches && !$('chatbot').hidden) closeChat();
+      startDocument(btn.dataset.startSpec);
+    };
+  }
   for (const btn of document.querySelectorAll('#chatbot-log [data-show-pricing], #support-log [data-show-pricing]')) {
     btn.onclick = () => {
       if (!$('help').hidden) closeHelp();
@@ -607,7 +662,7 @@ async function askSupport(question) {
       method: 'POST',
       body: { messages: state.support, context: supportContext() },
     });
-    state.support.push({ role: 'assistant', content: res.text, showPricing: Boolean(res.showPricing) });
+    state.support.push({ role: 'assistant', content: res.text, showPricing: Boolean(res.showPricing), agreements: res.agreements ?? [] });
     if (res.escalate) showEscalation();
   } catch (err) {
     state.support.push({ role: 'assistant', content: err.message });
@@ -661,7 +716,30 @@ $('brand-home').onclick = (e) => {
   showHome();
 };
 
-$('doc-select').onchange = (e) => startDocument(e.target.value);
+// The top menu starts a document when an option is picked with the mouse or a
+// finger. With the keyboard, arrow keys only browse; Enter starts the one shown,
+// so looking through the list never uses up the hourly allowance.
+let pickedByPointer = false;
+$('doc-select').addEventListener('pointerdown', () => { pickedByPointer = true; });
+$('doc-select').addEventListener('change', (e) => {
+  if (pickedByPointer) {
+    pickedByPointer = false;
+    startDocument(e.target.value);
+  } else {
+    $('doc-select').setAttribute('aria-description', 'Press Enter to start this agreement');
+  }
+});
+$('doc-select').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.value) {
+    e.preventDefault();
+    startDocument(e.target.value);
+  }
+});
+$('doc-select').addEventListener('blur', () => {
+  pickedByPointer = false;
+  // Browsed with the arrows and left without pressing Enter: show the current agreement again.
+  if (!state.sending) $('doc-select').value = state.current && !$('workspace').classList.contains('hidden') ? state.current.specId : '';
+});
 $('hero-select').onchange = (e) => ($('hero-start').disabled = !e.target.value);
 $('hero-start').onclick = () => startDocument($('hero-select').value);
 
@@ -674,6 +752,14 @@ $('drafts-btn').onclick = (e) => {
 };
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.menu-wrap')) closeDrafts();
+});
+$('drafts-menu').addEventListener('keydown', (e) => {
+  if (!['ArrowDown', 'ArrowUp'].includes(e.key)) return;
+  const items = [...$('drafts-menu').querySelectorAll('.menu-item')];
+  const i = items.indexOf(document.activeElement);
+  const next = e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1);
+  e.preventDefault();
+  items[next]?.focus();
 });
 
 $('answer-form').onsubmit = (e) => {
@@ -690,6 +776,10 @@ $('answer-input').addEventListener('keydown', (e) => {
     $('answer-form').requestSubmit();
   }
 });
+$('stage-download').onclick = () => {
+  $('download').scrollIntoView({ block: 'center', behavior: 'smooth' });
+  $('download').click();
+};
 $('finish-btn').onclick = () => send({ content: "That's everything — I'm done." });
 
 $('tab-fields').onclick = () => {
@@ -791,6 +881,32 @@ $('buy-scrim').onclick = (e) => {
 
 const ACK_KEY = 'prelegal-demo-ack';
 
+/** Keep Tab inside an open modal dialog, so keyboard users can't wander behind it. */
+function trapFocus(container) {
+  container.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const items = [...container.querySelectorAll('button, [href], input, select, textarea')].filter(
+      (el) => !el.disabled && el.offsetParent !== null,
+    );
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    } else if (!container.contains(document.activeElement)) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+}
+trapFocus($('ack'));
+trapFocus($('buy'));
+trapFocus($('help'));
+
 function openAck() {
   $('ack-scrim').classList.remove('hidden');
   $('ack-ok').focus();
@@ -803,6 +919,7 @@ $('ack-ok').onclick = () => {
     /* storage unavailable: they'll see it again next visit */
   }
   $('ack-scrim').classList.add('hidden');
+  $('doc-select').focus();
 };
 $('demo-strip-more').onclick = openAck;
 

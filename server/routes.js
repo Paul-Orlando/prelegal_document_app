@@ -16,11 +16,11 @@ import { getSpec, isKnownField, listSpecs, missingRequiredFields } from './docum
 import { documentFilename, renderCoverPage, renderDocument } from './render.js';
 import { renderDocxBuffer, renderPdfBuffer } from './exporters.js';
 import { activeMode, runTurn } from './ai/index.js';
-import { LIMITS, checkLimits, limitsEnabled, minutesText } from './rateLimit.js';
-import { supportReply } from './ai/support.js';
+import { LIMITS, checkLimits, limitsEnabled, minutesText, refundLimit } from './rateLimit.js';
+import { suggestedAgreements, supportReply } from './ai/support.js';
 import { FIRM } from './firm.js';
 import { DEMO_MODE } from './config.js';
-import { priceFor, pricingView } from './pricing.js';
+import { cheapestOption, priceFor, pricingView } from './pricing.js';
 import { canDownload, entitlements, paymentOptions, paymentsEnabled, startCheckout } from './payments.js';
 import crypto from 'node:crypto';
 import MarkdownIt from 'markdown-it';
@@ -178,9 +178,13 @@ router.patch('/documents/:id', requireAuth, (req, res) => {
 });
 
 router.delete('/documents/:id', requireAuth, (req, res) => {
-  if (!deleteDocument(req.user.id, req.params.id))
-    return res.status(404).json({ error: 'Document not found.' });
-  res.json({ ok: true });
+  const doc = getDocument(req.user.id, req.params.id);
+  if (!doc || !deleteDocument(req.user.id, doc.id)) return res.status(404).json({ error: 'Document not found.' });
+  // A draft with no answers saved was a change of mind, not a test: give the
+  // visitor that document back (the per-address backstop still counts it).
+  const untouched = !Object.values(doc.values).some((v) => String(v ?? '').trim());
+  if (untouched) refundLimit(`doc:visitor:${req.user.id}`);
+  res.json({ ok: true, refunded: untouched });
 });
 
 /* ------------------------------------------------------------------- chat */
@@ -341,6 +345,10 @@ router.get('/pricing', (_req, res) => {
   res.json({ pricing: pricingView() });
 });
 
+router.get('/pricing/estimate', (req, res) => {
+  res.json(cheapestOption({ essential: req.query.essential, commercial: req.query.commercial, months: req.query.months }));
+});
+
 router.get('/support/firm', (_req, res) => {
   res.json({ firm: FIRM });
 });
@@ -381,6 +389,7 @@ router.post('/support/chat', async (req, res, next) => {
       text: reply.text,
       escalate: Boolean(reply.escalate),
       showPricing: Boolean(reply.showPricing),
+      agreements: reply.escalate ? [] : suggestedAgreements(reply.text, { showPricing: reply.showPricing }),
       meta: { usage: reply.usage ?? null },
     });
   } catch (err) {

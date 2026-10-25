@@ -57,6 +57,17 @@ export function checkLimits(checks) {
   return { allowed: true };
 }
 
+/**
+ * Give back one use of a limit, most recent first. Used when someone discards
+ * a draft they never answered anything in (they changed their mind about the
+ * agreement type). Only the per-visitor counter is refunded; the per-address
+ * backstop never is, so this can't be used to get unlimited documents.
+ */
+export function refundLimit(key) {
+  const hits = buckets.get(key);
+  if (hits?.length) hits.pop();
+}
+
 /** Forget every counter. For tests only. */
 export function resetRateLimits() {
   buckets.clear();

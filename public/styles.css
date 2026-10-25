@@ -266,6 +266,7 @@ select {
 }
 
 .stage {
+  min-width: 0;
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
@@ -306,7 +307,7 @@ select {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2.5 7.5l3 3 6-7' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2.5 7.5l3 3 6-7' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.recorded span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recorded span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
 .question-text {
   font-family: var(--serif);
@@ -547,7 +548,8 @@ body.in-workspace .site-foot { display: none; }
 /* --------------------------------------------------------------- responsive */
 
 @media (max-width: 1080px) {
-  .workspace { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr): long answers can't stretch the column past the screen */
+  .workspace { grid-template-columns: minmax(0, 1fr); }
   .paper { position: static; height: auto; max-height: none; border-left: none; border-top: 1px solid var(--line); }
   .paper-body { max-height: 60vh; }
 }
@@ -743,7 +745,7 @@ body.in-workspace .chat-launcher { bottom: 88px; }
 .paper-price { margin: 0; padding: 10px 20px 0; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); }
 .paper-price + .paper-foot { border-top: none; }
 
-.s-actions { align-self: flex-start; display: flex; gap: 6px; margin-top: -4px; }
+.s-actions { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
 .s-actions .chip { font-weight: 600; }
 
 @media (max-width: 960px) {
@@ -817,3 +819,25 @@ body.in-workspace .chat-launcher { bottom: 88px; }
 }
 
 .toast--long { max-width: min(560px, calc(100vw - 32px)); border-radius: 14px; text-align: center; line-height: 1.45; }
+
+/* Phones: room at the bottom so the Ask Prelegal button never covers the last
+   controls (Download), and a shorter demo strip. */
+.demo-short { display: none; }
+@media (max-width: 860px) {
+  body { padding-bottom: 84px; }
+  .demo-full { display: none; }
+  .demo-short { display: inline; }
+}
+
+/* Pricing estimator */
+.estimator { margin-top: 28px; padding: 22px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
+.estimator h2 { font-family: var(--serif); font-weight: 500; font-size: 22px; margin: 0 0 14px; }
+.estimator-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.estimator-form label span { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.estimator-result { margin-top: 16px; display: grid; gap: 6px; }
+.est-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; font-size: 14.5px; }
+.est-row strong { font-family: var(--serif); font-size: 18px; font-weight: 500; }
+.est-row--best { background: var(--brass-soft); }
+.est-row--best span::after { content: " — cheapest"; color: var(--brass-deep); font-weight: 700; }
+.est-saving { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); }
+@media (max-width: 860px) { .estimator-form { grid-template-columns: 1fr; } }

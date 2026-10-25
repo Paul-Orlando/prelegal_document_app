@@ -25,6 +25,8 @@ Fix what fails, re-run, and keep each result file: the before-and-after reports 
 
 ## 3. User test
 
+A simulated walkthrough with 3 participants (phone, laptop with the assistant first, keyboard only in night mode) was run on 2026-10-25 and found 12 problems, all fixed: see `docs/user_test/summary_simulated_2026-10-25.md`. It isn't a substitute for real people.
+
 Run `docs/user_test/script.md` with 3 to 5 people, record results in `results_template.csv`, and write up `summary_template.md`, including the changes made because of feedback.
 
 ## Before a demo

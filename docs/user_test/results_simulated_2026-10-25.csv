@@ -1,0 +1,28 @@
+participant,background,order,task,method,seconds,success,notes
+P1,Small bakery owner; not technical; phone,screens first,1 draft an NDA,any,simulated - not timed,yes (with difficulty),20 taps; page slid sideways after a long answer; Download 1569px down with nothing pointing to it; chat button covered Download
+P1,,screens first,2 agreement for personal data,screens,simulated - not timed,yes,Agreement list descriptions mention personal data
+P1,,screens first,2 agreement for personal data,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-rec-03)
+P1,,screens first,3 cheapest way to pay,screens,simulated - not timed,struggled,No comparison on Pricing; would need to work out 10 x $99 vs $449; page over 4 phone screens long
+P1,,screens first,3 cheapest way to pay,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-price-04)
+P1,,screens first,4 lawyer for privacy,screens,simulated - not timed,yes,Attorney list in Help & support after scrolling
+P1,,screens first,4 lawyer for privacy,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-firm-03)
+P1,,screens first,5 download keeps failing,screens,simulated - not timed,yes,Help desk number at the top of Help & support
+P1,,screens first,5 download keeps failing,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-hand-02)
+P2,Operations manager; signs vendor contracts; laptop,Ask Prelegal first,1 draft an NDA,any,simulated - not timed,yes,13 actions; asked the chat to set it up and it couldn't; had to close the chat and use the menu
+P2,,Ask Prelegal first,2 agreement for personal data,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-rec-03)
+P2,,Ask Prelegal first,2 agreement for personal data,screens,simulated - not timed,yes,
+P2,,Ask Prelegal first,3 cheapest way to pay,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-price-04)
+P2,,Ask Prelegal first,3 cheapest way to pay,screens,simulated - not timed,struggled,Pricing page had prices but no comparison
+P2,,Ask Prelegal first,4 lawyer for privacy,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-firm-03)
+P2,,Ask Prelegal first,4 lawyer for privacy,screens,simulated - not timed,yes,
+P2,,Ask Prelegal first,5 download keeps failing,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-hand-02)
+P2,,Ask Prelegal first,5 download keeps failing,screens,simulated - not timed,yes,Help desk number 94px from the top of the panel
+P3,Startup founder; keyboard only; night mode,screens first,1 draft an NDA,any,simulated - not timed,yes (at a cost),Arrow keys on the agreement menu started a document on every press; Tab escaped the Before you start notice
+P3,,screens first,2 agreement for personal data,screens,simulated - not timed,yes,Reachable by Tab
+P3,,screens first,2 agreement for personal data,Ask Prelegal,simulated - not timed,yes,Chat opens with focus in the input; Escape closes it
+P3,,screens first,3 cheapest way to pay,screens,simulated - not timed,struggled,Same as P1 and P2
+P3,,screens first,3 cheapest way to pay,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-price-04)
+P3,,screens first,4 lawyer for privacy,screens,simulated - not timed,yes,Help panel focus moves to Close; Escape returns focus
+P3,,screens first,4 lawyer for privacy,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-firm-03)
+P3,,screens first,5 download keeps failing,screens,simulated - not timed,yes,
+P3,,screens first,5 download keeps failing,Ask Prelegal,simulated - not timed,yes,Live model 3 of 3 (sup-hand-02)

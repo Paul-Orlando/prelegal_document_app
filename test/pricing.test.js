@@ -101,3 +101,48 @@ describe('Ask Prelegal and pricing (scripted mode)', () => {
     assert.equal(data.showPricing, false);
   });
 });
+
+describe('pricing estimator', () => {
+  // Found in the user test: the Pricing page didn't show the comparison people needed.
+  test('10 Commercial agreements over a year: the 12-month plan, saving $541', async () => {
+    const { cheapestOption } = await import('../server/pricing.js');
+    const r = cheapestOption({ commercial: 10, months: 12 });
+    assert.equal(r.best, 'twelve-month');
+    assert.equal(r.saving, 541);
+    assert.deepEqual(r.options.map((o) => o.cost), [990, 498, 449]);
+  });
+
+  test('a single NDA: buying it on its own is cheapest', async () => {
+    const { cheapestOption } = await import('../server/pricing.js');
+    const r = cheapestOption({ essential: 1, months: 12 });
+    assert.equal(r.best, 'single');
+    assert.equal(r.saving, 0);
+  });
+
+  test('over 6 months, one 6-month plan covers the period', async () => {
+    const { cheapestOption } = await import('../server/pricing.js');
+    const r = cheapestOption({ commercial: 3, months: 6 });
+    assert.equal(r.best, 'six-month');
+    assert.equal(r.options.find((o) => o.id === 'six-month').cost, 249);
+  });
+
+  test('bad input is clamped, not trusted', async () => {
+    const { cheapestOption } = await import('../server/pricing.js');
+    const r = cheapestOption({ essential: -5, commercial: 'lots', months: 99 });
+    assert.equal(r.essential, 0);
+    assert.equal(r.commercial, 0);
+    assert.equal(r.months, 12);
+    assert.equal(cheapestOption({ commercial: 1e9 }).commercial, 500);
+  });
+
+  test('the endpoint returns the same result', async () => {
+    const { data } = await new Client(srv.base).get('/api/pricing/estimate?commercial=10&months=12');
+    assert.equal(data.best, 'twelve-month');
+    assert.equal(data.saving, 541);
+  });
+
+  test('the Pricing page has the estimator', async () => {
+    const html = await (await fetch(`${srv.base}/`)).text();
+    assert.match(html, /Work out the cheapest option/);
+  });
+});
