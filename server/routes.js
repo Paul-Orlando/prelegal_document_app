@@ -19,7 +19,9 @@ import { activeMode, runTurn } from './ai/index.js';
 import { checkRateLimit } from './rateLimit.js';
 import { supportReply } from './ai/support.js';
 import { FIRM } from './firm.js';
+import { DEMO_MODE } from './config.js';
 import { priceFor, pricingView } from './pricing.js';
+import { canDownload, entitlements, paymentOptions, paymentsEnabled, startCheckout } from './payments.js';
 import crypto from 'node:crypto';
 import MarkdownIt from 'markdown-it';
 
@@ -103,7 +105,7 @@ function documentView(doc) {
 /* ------------------------------------------------------------------ session */
 
 router.get('/session', requireAuth, (req, res) => {
-  res.json({ user: req.user, aiMode: activeMode });
+  res.json({ user: req.user, aiMode: activeMode, demoMode: DEMO_MODE, paymentsEnabled: paymentsEnabled() });
 });
 
 /* ----------------------------------------------------------------- catalog */
@@ -293,6 +295,16 @@ router.get('/documents/:id/download', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'Unsupported format. Use md, pdf, or docx.' });
     }
 
+    // Paywall: only when PRELEGAL_PAYMENTS=on. Off in the demo.
+    const access = canDownload(req.user.id, doc.id);
+    if (!access.allowed) {
+      return res.status(402).json({
+        error: 'Buy this agreement or choose a plan to download it.',
+        paymentRequired: true,
+        options: paymentOptions(doc.specId),
+      });
+    }
+
     const spec = getSpec(doc.specId);
     const body = await handler.render(doc.specId, doc.values);
     const filename = documentFilename(spec, doc.values, format);
@@ -365,4 +377,24 @@ router.post('/support/tickets', requireAuth, (req, res) => {
     message: String(message ?? '').slice(0, 4000),
   });
   res.status(201).json({ ticket, helpDesk: FIRM.helpDesk });
+});
+
+/* ---------------------------------------------------------------- payments */
+
+router.get('/entitlements', requireAuth, (req, res) => {
+  res.json(entitlements(req.user.id));
+});
+
+router.post('/checkout', requireAuth, (req, res, next) => {
+  try {
+    if (!paymentsEnabled()) return res.status(404).json({ error: 'Payments are switched off in this demo.' });
+    const { kind, documentId, planId } = req.body ?? {};
+    if (kind === 'document' && !getDocument(req.user.id, String(documentId ?? ''))) {
+      return res.status(404).json({ error: 'Document not found.' });
+    }
+    const result = startCheckout(req.user.id, { kind, documentId, planId });
+    res.status(201).json({ ...result, entitlements: entitlements(req.user.id) });
+  } catch (err) {
+    next(err);
+  }
 });

@@ -2,6 +2,7 @@ import MarkdownIt from 'markdown-it';
 import { getSpec, missingRequiredFields } from './documentSpecs.js';
 import { formatDate, partyLabels, readStandardTerms } from './render.js';
 import { FIRM } from './firm.js';
+import { DEMO_MODE } from './config.js';
 
 /**
  * A format-neutral model of a finished agreement, shared by the PDF and Word
@@ -205,7 +206,10 @@ function clauseLabel(counters) {
 
 /* ------------------------------------------------------------- the model */
 
-export function buildDocModel(specId, values = {}) {
+export const SAMPLE_NOTICE =
+  'Sample document for demonstration only. Not for use, not legal advice, and not to be signed.';
+
+export function buildDocModel(specId, values = {}, { sample = DEMO_MODE } = {}) {
   const spec = getSpec(specId);
   if (!spec) throw new Error(`Unknown document type: ${specId}`);
 
@@ -230,8 +234,22 @@ export function buildDocModel(specId, values = {}) {
   const effective = keyTerms.find((k, i) => spec.fields[i].key === 'effectiveDate')?.value || null;
   const termsUrl = spec.standardTermsUrl.replace(/^https?:\/\//, '');
 
+  const draftText = missing.length
+    ? `${missing.length} required term${missing.length === 1 ? ' is' : 's are'} still to be completed.`
+    : '';
+  // One notice box on the cover: the sample warning and/or the draft status.
+  const notice = sample
+    ? [SAMPLE_NOTICE, draftText].filter(Boolean).join(' ')
+    : missing.length
+      ? `Draft — ${draftText} Not for signature.`
+      : null;
+
   return {
     spec,
+    sample,
+    notice,
+    headerTag: sample ? 'Sample — not for use' : missing.length ? 'Draft — not for signature' : null,
+    footerPrefix: sample ? 'SAMPLE, NOT FOR USE — ' : '',
     title: spec.name,
     shortName: spec.shortName,
     parties: [partyA, partyB],
@@ -245,8 +263,10 @@ export function buildDocModel(specId, values = {}) {
     ],
     keyTerms,
     terms: parseTerms(readStandardTerms(spec.standardTerms)),
-    signatureIntro: `By signing below, each party agrees to enter into this ${spec.shortName} as of the Effective Date.`,
-    attribution: `Based on the Common Paper ${spec.name} (Version ${spec.version}), used under the Creative Commons Attribution 4.0 licence (CC BY 4.0). Modified from the original. Prepared with Prelegal. This document is not legal advice; consider having counsel review it before signing.`,
+    signatureIntro: sample
+      ? 'Sample only. These signature blocks show the layout of the final agreement and must not be signed.'
+      : `By signing below, each party agrees to enter into this ${spec.shortName} as of the Effective Date.`,
+    attribution: `Based on the Common Paper ${spec.name} (Version ${spec.version}), used under the Creative Commons Attribution 4.0 licence (CC BY 4.0). Modified from the original. Prepared with Prelegal. This document is not legal advice; consider having counsel review it before signing.${sample ? ` ${SAMPLE_NOTICE}` : ''}`,
     firm: FIRM,
   };
 }

@@ -36,3 +36,17 @@ Prelegal sits between online legal-form services and hiring a law firm: the agre
 - **Attorney review $195:** well under a flat-fee NDA draft ($285) or an hour of an Atlanta business attorney ($485), because it's a review of standard terms, not drafting from scratch.
 
 Review these figures before any real launch: competitors change prices often.
+
+## Demo mode and the paywall
+
+Two settings control how the app treats money and documents. Both default to the safe demo behaviour.
+
+| Setting | Default | Effect |
+|---|---|---|
+| `PRELEGAL_DEMO_MODE` | `on` | Every download is watermarked SAMPLE on every page, carries "not for use, not legal advice, and not to be signed" on the cover, header, footer and signature page, and its filename starts with `SAMPLE-`. The site shows a demo notice strip and a "Before you start" acknowledgment on first visit. |
+| `PRELEGAL_PAYMENTS` | `off` | When `on`, downloads need a purchased agreement or an active plan; otherwise the server answers 402 with the options and prices, and the page shows a purchase dialog. |
+| `PRELEGAL_PAYMENT_PROVIDER` | none | `test` simulates a successful payment for local testing (refused when `NODE_ENV=production`). With no provider, checkout returns a clear "not connected yet" message. |
+
+In the demo, downloads are free and the note above the Download button says what the agreement would cost in the live service.
+
+**Going live** means: switch demo mode off, switch payments on, and connect a real provider (for example Stripe Checkout) in `startCheckout()` in `server/payments.js`, with a webhook that calls `recordPurchase()` once payment succeeds. The download check, purchases table, plan dates and tests are already in place. Prices are always taken from `server/pricing.js` on the server, never from the request.

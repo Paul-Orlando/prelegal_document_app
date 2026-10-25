@@ -201,18 +201,39 @@ function renderProgress() {
     : `${doc.missingRequired.length} required detail${doc.missingRequired.length === 1 ? '' : 's'} to go`;
   $('download').disabled = !doc.specId;
   $('finish-btn').classList.toggle('hidden', !(doc.isComplete && doc.status !== 'complete'));
-  const note = $('paper-price');
-  if (doc.price && state.pricing) {
-    const shortest = state.pricing.plans[0];
-    note.innerHTML =
-      `${escapeHtml(doc.price.tierName)} agreement: $${doc.price.price} on its own, or included in a plan from $${shortest.price}. ` +
-      `<button class="text-btn" data-show-pricing>See pricing</button>`;
-    note.querySelector('[data-show-pricing]').onclick = showPricing;
-    note.classList.remove('hidden');
-  } else {
-    note.classList.add('hidden');
-  }
+  renderPriceNote(doc);
   $('doc-select').value = doc.specId || '';
+}
+
+/** The note above Download: what this agreement costs, and that it's free (and a sample) in the demo. */
+function renderPriceNote(doc) {
+  const note = $('paper-price');
+  if (!doc.price || !state.pricing) {
+    note.classList.add('hidden');
+    return;
+  }
+  const first = state.pricing.plans[0];
+  const price = `$${doc.price.price}`;
+  const ent = state.entitlements;
+  let html;
+  if (!state.paymentsEnabled) {
+    html =
+      `<strong>Free in this demo.</strong> In the live service, this ${escapeHtml(doc.price.tierName)} agreement is ${price}, ` +
+      `or included in a plan from $${first.price}. <button class="text-btn" data-show-pricing>See pricing</button>` +
+      (state.demoMode ? '<br>Downloads are watermarked samples and are not for use.' : '');
+  } else if (ent?.plan) {
+    const until = new Date(ent.plan.expiresAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+    html = `<strong>Included in your plan</strong> until ${escapeHtml(until)}.`;
+  } else if (ent?.documents.includes(doc.id)) {
+    html = '<strong>Purchased.</strong> Download it as often as you like.';
+  } else {
+    html =
+      `${price} to download this ${escapeHtml(doc.price.tierName)} agreement, or included in a plan from $${first.price}. ` +
+      `<button class="text-btn" data-show-pricing>See pricing</button>`;
+  }
+  note.innerHTML = html;
+  note.querySelector('[data-show-pricing]')?.addEventListener('click', showPricing);
+  note.classList.remove('hidden');
 }
 
 function renderFields() {
@@ -686,11 +707,101 @@ $('tab-doc').onclick = () => {
   refreshPreview();
 };
 
-$('download').onclick = () => {
+const downloadUrl = () => `/api/documents/${state.current.id}/download?format=${$('download-format').value}`;
+
+$('download').onclick = async () => {
   if (!state.current) return;
-  const format = $('download-format').value;
-  window.location.href = `/api/documents/${state.current.id}/download?format=${format}`;
+  if (!state.paymentsEnabled) {
+    window.location.href = downloadUrl();
+    return;
+  }
+  // Paywall on: check first, so a 402 opens the purchase dialog instead of a blank page.
+  const res = await fetch(downloadUrl(), { credentials: 'same-origin' });
+  if (res.status === 402) {
+    openBuy((await res.json()).options);
+    return;
+  }
+  if (!res.ok) {
+    toast((await res.json().catch(() => ({}))).error || 'The download failed. Please try again.');
+    return;
+  }
+  const blob = await res.blob();
+  const name = (res.headers.get('content-disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'agreement';
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
+
+function openBuy(options) {
+  const opts = [
+    { kind: 'document', label: options.single.label, sub: 'Pay once for this agreement', price: options.single.price },
+    ...options.plans.map((p) => ({
+      kind: 'plan',
+      planId: p.id,
+      label: p.name,
+      sub: `Unlimited agreements for ${p.months} months`,
+      price: p.price,
+    })),
+  ];
+  $('buy-options').innerHTML = opts
+    .map(
+      (o, i) =>
+        `<button class="buy-option" data-i="${i}"><strong>${escapeHtml(o.label)}</strong>` +
+        `<span>${escapeHtml(o.sub)}</span><em>$${o.price}</em></button>`,
+    )
+    .join('');
+  $('buy-error').classList.add('hidden');
+  for (const btn of $('buy-options').querySelectorAll('.buy-option')) {
+    btn.onclick = async () => {
+      const o = opts[Number(btn.dataset.i)];
+      try {
+        const res = await api('/checkout', {
+          method: 'POST',
+          body: o.kind === 'plan' ? { kind: 'plan', planId: o.planId } : { kind: 'document', documentId: state.current.id },
+        });
+        state.entitlements = res.entitlements;
+        closeBuy();
+        renderPriceNote(state.current);
+        toast('Payment complete');
+        $('download').click();
+      } catch (err) {
+        $('buy-error').textContent = err.message;
+        $('buy-error').classList.remove('hidden');
+      }
+    };
+  }
+  $('buy-scrim').classList.remove('hidden');
+  $('buy-options').querySelector('.buy-option')?.focus();
+}
+
+function closeBuy() {
+  $('buy-scrim').classList.add('hidden');
+  $('download').focus();
+}
+
+$('buy-cancel').onclick = closeBuy;
+$('buy-scrim').onclick = (e) => {
+  if (e.target === $('buy-scrim')) closeBuy();
+};
+
+/* ------------------------------------------------- demo notice and consent */
+
+const ACK_KEY = 'prelegal-demo-ack';
+
+function openAck() {
+  $('ack-scrim').classList.remove('hidden');
+  $('ack-ok').focus();
+}
+
+$('ack-ok').onclick = () => {
+  try {
+    localStorage.setItem(ACK_KEY, '1');
+  } catch {
+    /* storage unavailable: they'll see it again next visit */
+  }
+  $('ack-scrim').classList.add('hidden');
+};
+$('demo-strip-more').onclick = openAck;
 
 $('delete-doc').onclick = async () => {
   if (!state.current) return;
@@ -749,7 +860,8 @@ $('help-scrim').onclick = closeHelp;
 for (const el of document.querySelectorAll('[data-open-help]')) el.onclick = openHelp;
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (!$('help').hidden) closeHelp();
+    if (!$('buy-scrim').classList.contains('hidden')) closeBuy();
+    else if (!$('help').hidden) closeHelp();
     else if (!$('chatbot').hidden) closeChat();
     else closeDrafts();
   }
@@ -804,6 +916,26 @@ $('callback-form').onsubmit = async (e) => {
   try {
     const session = await api('/session');
     state.aiMode = session.aiMode;
+    state.demoMode = session.demoMode;
+    state.paymentsEnabled = session.paymentsEnabled;
+    if (state.demoMode) {
+      $('demo-strip').classList.remove('hidden');
+      // Keep the pinned top bar and document panel clear of the strip, whatever its height.
+      const setStrip = () =>
+        document.documentElement.style.setProperty('--strip-h', `${$('demo-strip').offsetHeight}px`);
+      setStrip();
+      window.addEventListener('resize', setStrip);
+      let acknowledged = false;
+      try {
+        acknowledged = localStorage.getItem(ACK_KEY) === '1';
+      } catch {
+        /* storage unavailable */
+      }
+      if (!acknowledged) openAck();
+    } else {
+      $('foot-demo').remove();
+    }
+    if (state.paymentsEnabled) state.entitlements = await api('/entitlements');
     $('ai-badge').textContent = state.aiMode === 'openrouter' ? 'AI assistant on' : 'Scripted demo mode';
 
     const [{ documentTypes }, { firm }, { pricing }] = await Promise.all([

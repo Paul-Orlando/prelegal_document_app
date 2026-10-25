@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { TEMPLATES_DIR } from './config.js';
+import { DEMO_MODE, TEMPLATES_DIR } from './config.js';
 import { getSpec } from './documentSpecs.js';
 
 const templateCache = new Map();
@@ -153,7 +153,10 @@ export function renderSignaturePage(spec, values = {}) {
 }
 
 /** Cover page + the upstream Standard Terms + a signature page, as one markdown document. */
-export function renderDocument(specId, values = {}) {
+const SAMPLE_BANNER =
+  '> **SAMPLE, NOT FOR USE.** Sample document for demonstration only. Not for use, not legal advice, and not to be signed.';
+
+export function renderDocument(specId, values = {}, { sample = DEMO_MODE } = {}) {
   const spec = getSpec(specId);
   if (!spec) throw new Error(`Unknown document type: ${specId}`);
 
@@ -162,6 +165,7 @@ export function renderDocument(specId, values = {}) {
   const signaturePage = renderSignaturePage(spec, values);
 
   return [
+    ...(sample ? [SAMPLE_BANNER, ''] : []),
     coverPage,
     '',
     '---',
@@ -175,16 +179,17 @@ export function renderDocument(specId, values = {}) {
     '---',
     '',
     signaturePage,
+    ...(sample ? ['', SAMPLE_BANNER] : []),
   ].join('\n');
 }
 
 /** Suggested download filename for a rendered document. */
-export function documentFilename(spec, values = {}, extension = 'md') {
+export function documentFilename(spec, values = {}, extension = 'md', { sample = DEMO_MODE } = {}) {
   const [partyA, partyB] = partyLabels(spec, values);
   const slug = (s) =>
     String(s)
       .replace(/[^a-zA-Z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 40) || 'party';
-  return `${slug(spec.shortName)}-${slug(partyA)}-${slug(partyB)}.${extension}`;
+  return `${sample ? 'SAMPLE-' : ''}${slug(spec.shortName)}-${slug(partyA)}-${slug(partyB)}.${extension}`;
 }

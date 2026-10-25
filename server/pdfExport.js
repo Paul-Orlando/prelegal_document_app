@@ -198,9 +198,9 @@ function letterhead(doc, model) {
   doc.moveTo(M.left, y).lineTo(PAGE.width - M.right, y).lineWidth(1.25).strokeColor(C.brass).stroke();
 }
 
-function draftNotice(doc, model) {
-  const text = `Draft — ${model.missingCount} required term${model.missingCount === 1 ? ' is' : 's are'} still to be completed. Not for signature.`;
-  doc.font('italic').fontSize(9);
+function coverNotice(doc, model) {
+  const text = model.notice;
+  doc.font(model.sample ? 'bold' : 'italic').fontSize(9);
   const h = doc.heightOfString(text, { width: CONTENT_W - 24 }) + 14;
   const y = doc.y;
   doc.rect(M.left, y, CONTENT_W, h).fillAndStroke(C.draftBg, C.brass);
@@ -227,7 +227,7 @@ function coverPage(doc, model) {
   }
   doc.moveDown(1.1);
 
-  if (model.isDraft) draftNotice(doc, model);
+  if (model.notice) coverNotice(doc, model);
 
   writeRuns(doc, model.intro, M.left, doc.y, CONTENT_W);
   doc.y += 16;
@@ -409,9 +409,9 @@ function runningElements(doc, model) {
     if (i > 0) {
       drawLogo(doc, M.left, 38, 20);
       doc.font('bold').fontSize(8.5).fillColor(C.ink).text(model.title, M.left + 26, 45, { lineBreak: false });
-      if (model.isDraft) {
-        doc.font('italic').fontSize(8.5).fillColor(C.draft)
-          .text('Draft — not for signature', M.left, 45, { width: CONTENT_W, align: 'right', lineBreak: false });
+      if (model.headerTag) {
+        doc.font(model.sample ? 'bold' : 'italic').fontSize(8.5).fillColor(C.draft)
+          .text(model.headerTag, M.left, 45, { width: CONTENT_W, align: 'right', lineBreak: false });
       }
       doc.moveTo(M.left, 64).lineTo(PAGE.width - M.right, 64).lineWidth(0.5).strokeColor(C.line).stroke();
     }
@@ -419,11 +419,23 @@ function runningElements(doc, model) {
     const fy = PAGE.height - 50;
     doc.moveTo(M.left, fy - 8).lineTo(PAGE.width - M.right, fy - 8).lineWidth(0.5).strokeColor(C.line).stroke();
     doc.font('regular').fontSize(7.5).fillColor(C.muted)
-      .text(`${model.shortName} — ${partyLine}`, M.left, fy, { width: CONTENT_W * 0.7, lineBreak: false, ellipsis: true });
+      .text(`${model.footerPrefix}${model.shortName} — ${partyLine}`, M.left, fy, { width: CONTENT_W * 0.7, lineBreak: false, ellipsis: true });
     doc.text(`Page ${i + 1} of ${total}`, M.left, fy, { width: CONTENT_W, align: 'right', lineBreak: false });
+
+    if (model.sample) watermark(doc);
 
     doc.page.margins.bottom = savedBottom;
   }
+}
+
+/** A large, light, diagonal SAMPLE across the middle of the page. */
+function watermark(doc) {
+  doc.save();
+  doc.rotate(-40, { origin: [PAGE.width / 2, PAGE.height / 2] });
+  doc.fillColor(C.brass).fillOpacity(0.13);
+  doc.font('bold').fontSize(120)
+    .text('SAMPLE', -100, PAGE.height / 2 - 70, { width: PAGE.width + 200, align: 'center', lineBreak: false });
+  doc.restore();
 }
 
 /* ------------------------------------------------------------------ main */

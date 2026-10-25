@@ -44,6 +44,13 @@
       </symbol>
     </svg>
 
+    <!-- -------------------------------------------------------- demo notice -->
+    <div id="demo-strip" class="demo-strip hidden" role="note">
+      <strong>Demo only.</strong>
+      <span>Prelegal shows what an AI legal-document service could look like. Don't use it for real legal matters: documents are watermarked samples and nothing here is legal advice.</span>
+      <button class="text-btn" id="demo-strip-more">Read more</button>
+    </div>
+
     <!-- ------------------------------------------------------------ top bar -->
     <header class="topbar">
       <a href="/" class="brand" id="brand-home" aria-label="Prelegal home">
@@ -243,8 +250,10 @@
         <a id="foot-email" href="mailto:counsel@ashfordkane.example">counsel@ashfordkane.example</a>
       </p>
       <p class="foot-legal">
-        Prelegal builds documents from Common Paper standard agreements (CC BY 4.0). It provides
-        information, not legal advice; using it does not create an attorney–client relationship.
+        <span id="foot-demo">Prelegal is a demonstration of what an AI legal-document service could look like, not a live
+        legal service. Don't use it for real legal matters; downloads are watermarked samples.</span>
+        Documents are built from Common Paper standard agreements (CC BY 4.0). Nothing here is legal advice, and using
+        it does not create an attorney–client relationship.
         <span class="badge" id="ai-badge"></span>
       </p>
     </footer>
@@ -374,6 +383,34 @@
         <button type="submit" class="btn btn--primary">Send</button>
       </form>
     </section>
+
+    <!-- ------------------------------------------------ first-visit notice -->
+    <div id="ack-scrim" class="scrim scrim--center hidden">
+      <section id="ack" class="dialog" role="dialog" aria-modal="true" aria-labelledby="ack-title">
+        <svg class="dialog-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
+        <h2 id="ack-title">Before you start</h2>
+        <p>Prelegal is a <strong>demonstration</strong> of what an AI-guided legal document service could look like. It is not a live legal service.</p>
+        <ul>
+          <li>Don't use it for real legal matters or rely on anything it says.</li>
+          <li>Every download is a <strong>sample</strong>, watermarked "SAMPLE" and marked not for use. Don't sign or send it.</li>
+          <li>Nothing here is legal advice, and using it doesn't create an attorney–client relationship.</li>
+          <li>The law firm, attorneys, phone numbers and prices are fictional demo content.</li>
+        </ul>
+        <p class="dialog-small">The agreements are built on Common Paper's open standard terms (CC BY 4.0).</p>
+        <button id="ack-ok" class="btn btn--primary">I understand, show me the demo</button>
+      </section>
+    </div>
+
+    <!-- --------------------------------------------- purchase (paywall on) -->
+    <div id="buy-scrim" class="scrim scrim--center hidden">
+      <section id="buy" class="dialog" role="dialog" aria-modal="true" aria-labelledby="buy-title">
+        <h2 id="buy-title">Download your agreement</h2>
+        <p id="buy-lede">Buy this agreement on its own, or choose a plan to download unlimited agreements.</p>
+        <div id="buy-options" class="buy-options"></div>
+        <p id="buy-error" class="error hidden" role="alert"></p>
+        <button id="buy-cancel" class="btn btn--quiet">Not now</button>
+      </section>
+    </div>
 
     <div id="toast" class="toast hidden" role="status"></div>
 

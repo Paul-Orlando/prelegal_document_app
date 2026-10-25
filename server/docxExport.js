@@ -32,6 +32,23 @@ import { buildDocModel, plainText } from './docModel.js';
 
 const ASSETS = path.join(ROOT_DIR, 'server', 'assets');
 const LOGO = fs.readFileSync(path.join(ASSETS, 'logo.png'));
+const WATERMARK = fs.readFileSync(path.join(ASSETS, 'sample-watermark.png'));
+
+/** The SAMPLE watermark: an image anchored to the page centre, behind the text, repeated by the header. */
+function watermarkRun() {
+  return new ImageRun({
+    type: 'png',
+    data: WATERMARK,
+    transformation: { width: 560, height: 560 },
+    floating: {
+      horizontalPosition: { relative: 'page', align: 'center' },
+      verticalPosition: { relative: 'page', align: 'center' },
+      wrap: { type: 'none' },
+      behindDocument: true,
+      allowOverlap: true,
+    },
+  });
+}
 const FONT = 'Libre Caslon Text';
 const fontFile = (f) => fs.readFileSync(path.join(ASSETS, 'fonts', f));
 const EMBED = [
@@ -99,6 +116,7 @@ function letterhead(model) {
               behindDocument: false,
             },
           }),
+          ...(model.sample ? [watermarkRun()] : []),
           t('Prelegal', { bold: true, size: pt(19), color: C.ink }),
           small(`\t${model.firm.name}`),
         ],
@@ -116,8 +134,9 @@ function runningHeader(model) {
     new ImageRun({ type: 'png', data: LOGO, transformation: { width: 20, height: 20 } }),
     t(`  ${model.title}`, { bold: true, size: pt(8.5), color: C.ink }),
   ];
-  if (model.isDraft) {
-    children.push(t('\tDraft — not for signature', { italics: true, size: pt(8.5), color: C.draft }));
+  if (model.sample) children.unshift(watermarkRun());
+  if (model.headerTag) {
+    children.push(t(`\t${model.headerTag}`, { italics: !model.sample, bold: model.sample, size: pt(8.5), color: C.draft }));
   }
   return new Header({
     children: [
@@ -139,7 +158,7 @@ function footer(model) {
         border: { top: hair() },
         spacing: { before: 80 },
         children: [
-          t(`${model.shortName} — ${model.parties[0]} and ${model.parties[1]}`, { size: pt(7.5), color: C.muted }),
+          t(`${model.footerPrefix}${model.shortName} — ${model.parties[0]} and ${model.parties[1]}`, { size: pt(7.5), color: C.muted }),
           new TextRun({
             font: FONT,
             size: pt(7.5),
@@ -173,14 +192,14 @@ function brassRule() {
   return centered([t('───', { color: C.brass, size: pt(10) })], { spacing: { after: 240 } });
 }
 
-function draftNotice(model) {
-  const text = `Draft — ${model.missingCount} required term${model.missingCount === 1 ? ' is' : 's are'} still to be completed. Not for signature.`;
+function coverNotice(model) {
+  const text = model.notice;
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     shading: { type: ShadingType.CLEAR, fill: C.draftBg, color: 'auto' },
     border: { top: hair(C.brass, 6), bottom: hair(C.brass, 6), left: hair(C.brass, 6), right: hair(C.brass, 6) },
     spacing: { before: 120, after: 280 },
-    children: [t(text, { italics: true, size: pt(9), color: C.draft })],
+    children: [t(text, { italics: !model.sample, bold: model.sample, size: pt(9), color: C.draft })],
   });
 }
 
@@ -283,7 +302,7 @@ function signatureTable(headings, labels) {
       children: [
         new Paragraph({ keepNext: true, children: [t(heading, { bold: true, size: pt(10), color: C.ink })] }),
         ...labels.flatMap((label) => [
-          new Paragraph({ border: { bottom: hair(C.ink, 6) }, spacing: { before: 160, after: 0 }, keepNext: true, children: [] }),
+          new Paragraph({ border: { bottom: hair(C.ink, 6) }, spacing: { before: 120, after: 0 }, keepNext: true, children: [] }),
           new Paragraph({ spacing: { after: 0 }, keepNext: true, children: [t(label, { size: pt(7.5), color: C.muted })] }),
         ]),
       ],
@@ -310,7 +329,7 @@ export async function renderDocxBuffer(specId, values) {
     ...(model.effectiveDate
       ? [centered([t(`Effective ${model.effectiveDate}`, { color: C.muted })], { spacing: { after: 240 } })]
       : []),
-    ...(model.isDraft ? [draftNotice(model)] : []),
+    ...(model.notice ? [coverNotice(model)] : []),
     new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 }, children: runsToText(model.intro) }),
     sectionHeading('Key Terms'),
     keyTermsTable(model.keyTerms),

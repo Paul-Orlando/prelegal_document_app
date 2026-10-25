@@ -120,3 +120,41 @@ describe('repository hygiene', () => {
     }
   });
 });
+
+describe('demo notice', () => {
+  test('the page states it is a demo and not for real legal matters', async () => {
+    const html = await (await fetch(`${srv.base}/`)).text();
+    assert.match(html, /id="demo-strip"/);
+    assert.match(html, /Don't use it for real legal matters/);
+    assert.match(html, /Before you start/);
+    assert.match(html, /watermarked "SAMPLE"/);
+  });
+
+  test('Ask Prelegal says a demo document must not be used', async () => {
+    const c = new Client(srv.base);
+    const res = await c.post('/api/support/chat', { messages: [{ role: 'user', content: 'Can I use this NDA with my client?' }] });
+    assert.match(res.data.text, /^No\./);
+    assert.match(res.data.text, /sample/);
+    assert.match(res.data.text, /attorney/);
+  });
+});
+
+describe('unexpected errors', () => {
+  test('internal error details are never sent to the browser', async () => {
+    const { createApp } = await import('../server/app.js');
+    const app = createApp();
+    // Call the app's final error handler directly with an unexpected error.
+    const handler = app._router.stack.at(-1).handle;
+    let sent;
+    const res = { status(code) { this.code = code; return this; }, json(body) { sent = body; } };
+    const silence = console.error;
+    console.error = () => {};
+    try {
+      handler(new Error('SQLITE_CORRUPT: secret table details'), {}, res, () => {});
+    } finally {
+      console.error = silence;
+    }
+    assert.equal(res.code, 500);
+    assert.doesNotMatch(sent.error, /SQLITE|secret/);
+  });
+});

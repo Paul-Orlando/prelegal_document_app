@@ -55,9 +55,12 @@ export function createApp() {
   app.use((err, _req, res, _next) => {
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON.' });
     if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request is too large.' });
-    const status = err.status || 500;
-    if (status >= 500) console.error('[error]', err);
-    res.status(status).json({ error: status >= 500 ? 'Something went wrong on our side. Please try again.' : err.message });
+    // Errors the app raises on purpose carry a status and a user-facing message;
+    // anything else is unexpected, so it's logged and its details are hidden.
+    const deliberate = Number.isInteger(err.status);
+    const status = deliberate ? err.status : 500;
+    if (!deliberate) console.error('[error]', err);
+    res.status(status).json({ error: deliberate ? err.message : 'Something went wrong on our side. Please try again.' });
   });
 
   return app;

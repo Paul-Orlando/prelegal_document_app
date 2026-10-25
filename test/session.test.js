@@ -19,6 +19,8 @@ describe('guest sessions', () => {
     const body = await res.json();
     assert.equal(body.user.displayName, 'Guest');
     assert.ok(['mock', 'openrouter'].includes(body.aiMode));
+    assert.equal(body.demoMode, true);
+    assert.equal(body.paymentsEnabled, false);
   });
 
   test('the same browser keeps the same guest', async () => {

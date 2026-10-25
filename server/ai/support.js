@@ -3,6 +3,7 @@ import { AI_MODE, MODEL, OPENROUTER_API_KEY, OPENROUTER_BASE_URL } from '../conf
 import { DOCUMENT_SPECS } from '../documentSpecs.js';
 import { FIRM, firmSummary } from '../firm.js';
 import { PRICING, pricingSummary } from '../pricing.js';
+import { DEMO_MODE } from '../config.js';
 
 /**
  * Help & Support agent. Answers questions about the app, the supported
@@ -20,6 +21,10 @@ const client =
     : null;
 
 const SYSTEM = `You are the Help & Support assistant for ${FIRM.product}, a self-serve legal document app run by the law firm ${FIRM.name}.
+
+## This is a demo
+
+${DEMO_MODE ? `Prelegal is currently a demonstration of what an AI legal-document service could look like, not a live legal service. Every download is a watermarked SAMPLE marked not for use. If anyone asks whether they can use, sign or rely on a document, say clearly that they can't: it's a demo sample, not legal advice, and they should speak to a licensed attorney for a real matter. Prices are shown to illustrate the live service; downloads are free in the demo. The firm, attorneys and phone numbers are fictional demo content.` : 'Prelegal is a live service.'}
 
 ## What you know
 
@@ -51,6 +56,11 @@ const [ESS, COM] = PRICING.tiers;
 const [SIX, TWELVE] = PRICING.plans;
 
 const FAQ = [
+  {
+    match: /\b(can|may|could|should) (i|we) (use|sign|send|rely)|is (this|it) (legal|valid|binding|enforceable)|real (contract|agreement|matter)/i,
+    reply:
+      'No. Prelegal is a demo, and every download is a watermarked sample marked not for use. Please don\'t sign or rely on it. For a real agreement, speak to a licensed attorney.',
+  },
   {
     match: /attorney review|review cost|lawyer review cost/i,
     pricing: true,
