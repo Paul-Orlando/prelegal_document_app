@@ -393,7 +393,9 @@
           "governing law",
           "which state",
           "whose law",
-          "laws of"
+          "laws of",
+          "govern",
+          "jurisdiction"
         ]
       ],
       "notes": "Can't finish with a required term missing; asks for it."
