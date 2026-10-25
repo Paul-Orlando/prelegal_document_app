@@ -38,6 +38,8 @@ loadDotEnv();
 export const PORT = Number(process.env.PORT || 3000);
 export const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'prelegal.db');
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+// Overridable so tests can point at an unreachable address to exercise the fallback.
+export const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 export const MODEL = process.env.PRELEGAL_MODEL || process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
 /**

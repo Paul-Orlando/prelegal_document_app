@@ -8,7 +8,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test \"test/*.test.js\"",
+    "eval": "node eval/run_eval.mjs"
   },
   "engines": {
     "node": ">=22.5.0"

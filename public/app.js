@@ -163,6 +163,8 @@ function showHome() {
   state.current = null;
   $('home').classList.remove('hidden');
   $('workspace').classList.add('hidden');
+  $('pricing').classList.add('hidden');
+  $('pricing-btn').removeAttribute('aria-current');
   document.body.classList.remove('in-workspace');
   $('doc-select').value = '';
   if (location.hash) history.replaceState(null, '', location.pathname);
@@ -171,6 +173,8 @@ function showHome() {
 
 function showWorkspace() {
   $('home').classList.add('hidden');
+  $('pricing').classList.add('hidden');
+  $('pricing-btn').removeAttribute('aria-current');
   $('workspace').classList.remove('hidden');
   document.body.classList.add('in-workspace');
 }
@@ -197,6 +201,17 @@ function renderProgress() {
     : `${doc.missingRequired.length} required detail${doc.missingRequired.length === 1 ? '' : 's'} to go`;
   $('download').disabled = !doc.specId;
   $('finish-btn').classList.toggle('hidden', !(doc.isComplete && doc.status !== 'complete'));
+  const note = $('paper-price');
+  if (doc.price && state.pricing) {
+    const shortest = state.pricing.plans[0];
+    note.innerHTML =
+      `${escapeHtml(doc.price.tierName)} agreement: $${doc.price.price} on its own, or included in a plan from $${shortest.price}. ` +
+      `<button class="text-btn" data-show-pricing>See pricing</button>`;
+    note.querySelector('[data-show-pricing]').onclick = showPricing;
+    note.classList.remove('hidden');
+  } else {
+    note.classList.add('hidden');
+  }
   $('doc-select').value = doc.specId || '';
 }
 
@@ -291,7 +306,10 @@ async function openDocument(id) {
 /** Start a new document of the chosen type and ask its first question. */
 async function startDocument(specId) {
   if (!specId) return;
-  if (state.current?.specId === specId) return;
+  if (state.current?.specId === specId) {
+    showWorkspace();
+    return;
+  }
   if (state.sending) return;
   $('home-error').classList.add('hidden');
 
@@ -419,13 +437,105 @@ function renderFirm() {
     .join('');
 }
 
+/* ---------------------------------------------------------------- pricing */
+
+const money = (n) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
+
+function renderPricing() {
+  const p = state.pricing;
+  if (!p) return;
+  const [ess, com] = p.tiers;
+
+  const single =
+    `<article class="plan">` +
+    `<p class="plan-name">One agreement</p>` +
+    `<p class="plan-price">${money(ess.price)}<small>or ${money(com.price)}</small></p>` +
+    `<p class="plan-sub">Pay once per agreement: ${escapeHtml(ess.name)} or ${escapeHtml(com.name)}.</p>` +
+    `<ul>${p.singleIncludes.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</ul>` +
+    `<button class="btn btn--quiet" data-start-agreement>Start an agreement</button></article>`;
+
+  const plans = p.plans
+    .map((plan) => {
+      const featured = Boolean(plan.badge);
+      return (
+        `<article class="plan${featured ? ' plan--featured' : ''}">` +
+        (plan.badge ? `<span class="plan-badge">${escapeHtml(plan.badge)}</span>` : '') +
+        `<p class="plan-name">${escapeHtml(plan.name)}</p>` +
+        `<p class="plan-price">${money(plan.price)}<small>for ${plan.months} months</small></p>` +
+        `<p class="plan-sub">About ${money(plan.perMonth)} a month, paid upfront. Unlimited agreements.</p>` +
+        `<ul>${plan.includes.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</ul>` +
+        `<p class="plan-break">Costs the same as ${plan.breakEven.commercial} Commercial agreements bought one at a time</p>` +
+        `<button class="btn ${featured ? 'btn--primary' : 'btn--quiet'}" data-plan-request="Start the ${escapeHtml(plan.name)}">Choose the ${escapeHtml(plan.name)}</button>` +
+        `</article>`
+      );
+    })
+    .join('');
+  $('plan-grid').innerHTML = single + plans;
+
+  $('tier-tables').innerHTML = p.tiers
+    .map(
+      (t) =>
+        `<div class="tier"><div class="tier-head"><strong>${escapeHtml(t.name)}</strong>` +
+        `<span class="tier-price">${money(t.price)} <small>each</small></span></div>` +
+        `<p class="tier-blurb">${escapeHtml(t.blurb)}</p>` +
+        `<ul>${t.agreements.map((a) => `<li><button data-spec="${escapeHtml(a.id)}">${escapeHtml(a.name)}</button></li>`).join('')}</ul></div>`,
+    )
+    .join('');
+
+  const r = p.attorneyReview;
+  $('review-price').innerHTML = `${money(r.price)} <small>per agreement, ${money(r.memberPrice)} for plan members</small>`;
+  $('review-detail').textContent = r.detail;
+  $('plan-terms').textContent = p.planTerms;
+  $('price-comparison').textContent = p.comparison;
+  $('demo-note').textContent = p.demoNote;
+
+  for (const btn of document.querySelectorAll('#pricing [data-spec]')) btn.onclick = () => startDocument(btn.dataset.spec);
+  for (const btn of document.querySelectorAll('#pricing [data-start-agreement]')) {
+    btn.onclick = () => {
+      showHome();
+      $('hero-select').focus();
+    };
+  }
+  for (const btn of document.querySelectorAll('#pricing [data-plan-request]')) btn.onclick = () => requestPlan(btn.dataset.planRequest);
+}
+
+function showPricing() {
+  closeDrafts();
+  $('home').classList.add('hidden');
+  $('workspace').classList.add('hidden');
+  document.body.classList.remove('in-workspace');
+  $('pricing').classList.remove('hidden');
+  $('pricing-btn').setAttribute('aria-current', 'page');
+  if (location.hash !== '#pricing') history.replaceState(null, '', '#pricing');
+  window.scrollTo({ top: 0 });
+  if (window.matchMedia('(max-width: 860px)').matches && !$('chatbot').hidden) closeChat();
+}
+
+/** Plans are signed up for through a help desk callback; open the form with the topic chosen. */
+function requestPlan(topic) {
+  if (!$('chatbot').hidden) closeChat();
+  openHelp();
+  const select = $('cb-topic');
+  const option = [...select.options].find((o) => o.textContent === topic);
+  if (option) select.value = option.value;
+  $('callback-done').classList.add('hidden');
+  $('callback-form').classList.remove('hidden');
+  if (!$('cb-message').value) $('cb-message').value = topic.startsWith('Start') ? `I'd like to start the ${topic.replace('Start the ', '')}.` : '';
+  $('callback-form').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  $('cb-name').focus();
+}
+
 const GREETING =
-  "Hi, I'm the Prelegal assistant. Ask me which agreement fits your deal, what a question means, or how to download your document. If I can't help, I'll put you in touch with our help desk.";
+  "Hi, I'm the Prelegal assistant. Ask me which agreement fits your deal, what a question means, how pricing and plans work, or how to download your document. If I can't help, I'll put you in touch with our help desk.";
 
 /** The support conversation is shared by the chat widget and the Help & support panel. */
 function renderSupport() {
   const html = state.support
-    .map((m) => `<div class="s-msg ${m.role}">${inline(escapeHtml(m.content))}</div>`)
+    .map(
+      (m) =>
+        `<div class="s-msg ${m.role}">${inline(escapeHtml(m.content))}</div>` +
+        (m.showPricing ? '<div class="s-actions"><button class="chip" data-show-pricing>View plans and prices</button></div>' : ''),
+    )
     .join('');
   const typing = state.supportBusy ? '<div class="s-msg assistant typing">Looking into it…</div>' : '';
 
@@ -435,6 +545,12 @@ function renderSupport() {
 
   const botLog = $('chatbot-log');
   botLog.innerHTML = `<div class="s-msg assistant">${escapeHtml(GREETING)}</div>` + html + typing;
+  for (const btn of document.querySelectorAll('#chatbot-log [data-show-pricing], #support-log [data-show-pricing]')) {
+    btn.onclick = () => {
+      if (!$('help').hidden) closeHelp();
+      showPricing();
+    };
+  }
   $('chatbot-suggest').classList.toggle('hidden', state.support.length > 0);
   botLog.scrollTop = botLog.scrollHeight;
   panelLog.lastElementChild?.scrollIntoView({ block: 'nearest' });
@@ -467,7 +583,7 @@ async function askSupport(question) {
       method: 'POST',
       body: { messages: state.support, context: supportContext() },
     });
-    state.support.push({ role: 'assistant', content: res.text });
+    state.support.push({ role: 'assistant', content: res.text, showPricing: Boolean(res.showPricing) });
     if (res.escalate) showEscalation();
   } catch (err) {
     state.support.push({ role: 'assistant', content: err.message });
@@ -596,8 +712,14 @@ $('help-btn').onclick = () => {
 $('theme-btn').onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 
+$('pricing-btn').onclick = showPricing;
 $('chat-launcher').onclick = openChat;
-for (const el of document.querySelectorAll('[data-open-chat]')) el.onclick = openChat;
+for (const el of document.querySelectorAll('[data-open-chat]')) {
+  el.onclick = () => {
+    openChat();
+    if (el.dataset.chatQ) askSupport(el.dataset.chatQ);
+  };
+}
 $('chatbot-close').onclick = closeChat;
 $('chatbot-clear').onclick = () => {
   state.support = [];
@@ -684,15 +806,22 @@ $('callback-form').onsubmit = async (e) => {
     state.aiMode = session.aiMode;
     $('ai-badge').textContent = state.aiMode === 'openrouter' ? 'AI assistant on' : 'Scripted demo mode';
 
-    const [{ documentTypes }, { firm }] = await Promise.all([api('/catalog'), api('/support/firm')]);
+    const [{ documentTypes }, { firm }, { pricing }] = await Promise.all([
+      api('/catalog'),
+      api('/support/firm'),
+      api('/pricing'),
+    ]);
     state.catalog = documentTypes;
     state.firm = firm;
+    state.pricing = pricing;
     renderCatalog();
     renderFirm();
+    renderPricing();
     await loadDocuments();
 
     const match = location.hash.match(/^#doc\/(.+)$/);
     if (match) await openDocument(match[1]);
+    else if (location.hash === '#pricing') showPricing();
   } catch (err) {
     $('home-error').textContent = `Couldn't reach the server: ${err.message}`;
     $('home-error').classList.remove('hidden');

@@ -68,6 +68,10 @@
           </button>
           <div id="drafts-menu" class="menu hidden" role="menu"></div>
         </div>
+        <button id="pricing-btn" class="bar-btn bar-btn--pricing" aria-label="Pricing and plans">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.6 2.8H16a1.2 1.2 0 0 1 1.2 1.2v5.4a1.2 1.2 0 0 1-.35.85l-6.9 6.9a1.2 1.2 0 0 1-1.7 0L3.05 12a1.2 1.2 0 0 1 0-1.7l6.9-6.9a1.2 1.2 0 0 1 .65-.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="13.6" cy="6.4" r="1.3" fill="currentColor"/></svg>
+          <span>Pricing</span>
+        </button>
         <button id="help-btn" class="bar-btn bar-btn--help" aria-controls="help" aria-expanded="false" aria-label="Help and support">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 11.5v-1a6.5 6.5 0 0 1 13 0v1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="11" width="3.5" height="5" rx="1.2" fill="currentColor"/><rect x="14" y="11" width="3.5" height="5" rx="1.2" fill="currentColor"/></svg>
           <span>Help &amp; support</span>
@@ -118,6 +122,37 @@
       </section>
 
       <!-- ---------------------------------------------------- workspace -->
+      <!-- --------------------------------------------------------- pricing -->
+      <section id="pricing" class="pricing hidden" aria-labelledby="pricing-title">
+        <header class="pricing-head">
+          <h1 id="pricing-title">Pricing and plans</h1>
+          <p class="lede">Pay for one agreement when you need it, or choose a plan if you draft regularly. Every option is backed by the attorneys at Ashford &amp; Kane.</p>
+        </header>
+
+        <div class="plan-grid" id="plan-grid"></div>
+
+        <div class="pricing-detail">
+          <section class="price-table" aria-labelledby="per-doc-title">
+            <h2 id="per-doc-title">Price per agreement</h2>
+            <div id="tier-tables"></div>
+          </section>
+          <aside class="review-card" aria-labelledby="review-title">
+            <svg class="review-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
+            <h2 id="review-title">Attorney review</h2>
+            <p class="review-price" id="review-price"></p>
+            <p id="review-detail"></p>
+            <button class="btn btn--quiet" data-plan-request="Book an attorney review">Book a review</button>
+          </aside>
+        </div>
+
+        <div class="pricing-foot">
+          <p id="plan-terms"></p>
+          <p id="price-comparison"></p>
+          <p class="pricing-ask">Not sure which to choose? <button class="text-btn" data-open-chat data-chat-q="Which pricing option is best for me?">Ask Prelegal to recommend one</button>.</p>
+          <p class="demo-note" id="demo-note"></p>
+        </div>
+      </section>
+
       <section id="workspace" class="workspace hidden">
         <div class="stage">
           <div class="stage-meta">
@@ -181,6 +216,7 @@
             <article id="doc-preview" class="doc-preview"></article>
           </div>
 
+          <p id="paper-price" class="paper-price hidden"></p>
           <footer class="paper-foot">
             <label for="download-format" class="sr-only">Download format</label>
             <select id="download-format">
@@ -270,6 +306,9 @@
                 <option>Question about my document</option>
                 <option>Have a lawyer review my agreement</option>
                 <option>Problem with the app</option>
+                <option>Start the 6-month plan</option>
+                <option>Start the 12-month plan</option>
+                <option>Book an attorney review</option>
                 <option>Something else</option>
               </select>
             </label>

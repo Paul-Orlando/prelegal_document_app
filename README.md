@@ -23,6 +23,7 @@ There is no login. Each browser is given its own guest workspace automatically t
 - 🧭 Agreement picker in the top bar, one question at a time
 - 🛟 Help & support panel: firm phone numbers, attorneys, an AI support assistant that hands off to the help desk, and callback requests
 - 💬 "Ask Prelegal" chat assistant on every screen; it knows which question you're on and hands off to the help desk when it can't help
+- 💲 Pricing and plans: $49 or $99 per agreement, or 6-month ($249) and 12-month ($449) plans; Ask Prelegal explains and recommends them (see `docs/PRICING.md`)
 - 🌗 Day and night modes (day by default), remembered per browser
 - 🔐 Per-browser guest workspaces (no sign-in)
 - 🚀 Deploy-ready with Railway
@@ -77,6 +78,15 @@ starts the server in the background and writes its PID to `.data/server.pid`. Us
 - **Rate limiting** — `server/rateLimit.js` is a minimal in-memory limiter keyed by client IP, applied to new-document creation (3/hour). It's single-process and resets on restart, not a production rate limiter.
 
 Only the Mutual NDA repo publishes a fillable cover page upstream — every other Common Paper agreement is Standard Terms only, so Prelegal authors its own cover page for those, built from the variables each agreement's Standard Terms reference.
+
+## Test it
+
+```
+npm install
+npm test
+```
+
+The automated tests run against a throwaway database with the scripted interviewer, so they need no API key and cost nothing. They cover guest sessions and isolation between visitors, documents and the demo limits, the interview flow, the support assistant and help desk handoff, callback requests, pricing, PDF and Word exports for all 11 agreements, clause numbering, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are in the repository.
 
 ## Firm details
 

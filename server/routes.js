@@ -19,12 +19,15 @@ import { activeMode, runTurn } from './ai/index.js';
 import { checkRateLimit } from './rateLimit.js';
 import { supportReply } from './ai/support.js';
 import { FIRM } from './firm.js';
+import { priceFor, pricingView } from './pricing.js';
 import crypto from 'node:crypto';
 import MarkdownIt from 'markdown-it';
 
 // Preview renderer: raw HTML disabled so user-entered values can't inject markup.
 const previewMd = new MarkdownIt({ html: false, linkify: false });
-const stripTags = (text) => text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+// Remove only the template's own <span>/<label> markers; anything else (including
+// what a user typed) is escaped by markdown-it rather than silently dropped.
+const stripTags = (text) => text.replace(/<\/?(span|label)\b[^>]*>/gi, '');
 
 const NEW_DOCUMENT_LIMIT = 30;
 const NEW_DOCUMENT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -91,6 +94,7 @@ function documentView(doc) {
     fields: spec ? spec.fields : [],
     missingRequired: missing,
     isComplete: spec ? missing.length === 0 : false,
+    price: spec ? priceFor(spec.id) : null,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -223,7 +227,7 @@ router.post('/documents/:id/messages', requireAuth, async (req, res, next) => {
       return state;
     };
 
-    const { text, degraded } = await runTurn({
+    const { text, degraded, actions = [], usage } = await runTurn({
       specId: doc.specId,
       values: doc.values,
       history,
@@ -239,6 +243,8 @@ router.post('/documents/:id/messages', requireAuth, async (req, res, next) => {
       messages: userMessage ? [userMessage, assistantMessage] : [assistantMessage],
       document: documentView(updated),
       degraded: Boolean(degraded),
+      // Used by the evaluation runner to grade tool use and cost; harmless to the page.
+      meta: { actions: actions.map((a) => a.type), usage: usage ?? null },
     });
   } catch (err) {
     next(err);
@@ -301,6 +307,10 @@ router.get('/documents/:id/download', requireAuth, async (req, res, next) => {
 
 /* ---------------------------------------------------------- help & support */
 
+router.get('/pricing', (_req, res) => {
+  res.json({ pricing: pricingView() });
+});
+
 router.get('/support/firm', (_req, res) => {
   res.json({ firm: FIRM });
 });
@@ -330,7 +340,13 @@ router.post('/support/chat', async (req, res, next) => {
             question: String(ctx.question ?? '').slice(0, 800),
           }
         : null;
-    res.json(await supportReply(messages, context));
+    const reply = await supportReply(messages, context);
+    res.json({
+      text: reply.text,
+      escalate: Boolean(reply.escalate),
+      showPricing: Boolean(reply.showPricing),
+      meta: { usage: reply.usage ?? null },
+    });
   } catch (err) {
     next(err);
   }

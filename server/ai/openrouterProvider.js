@@ -1,12 +1,13 @@
 import Client from 'openai';
-import { MODEL, OPENROUTER_API_KEY } from '../config.js';
+import { MODEL, OPENROUTER_API_KEY, OPENROUTER_BASE_URL } from '../config.js';
 import { SYSTEM_BASE, buildStateBlock } from './prompt.js';
 import { buildTools, toAction } from './tools.js';
 
 const client = new Client({
   // Placeholder keeps the client constructible in scripted mode; it is never called then.
   apiKey: OPENROUTER_API_KEY || 'not-configured',
-  baseURL: 'https://openrouter.ai/api/v1',
+  baseURL: OPENROUTER_BASE_URL,
+  maxRetries: 1,
 });
 
 const MAX_TOOL_ROUNDS = 6;
@@ -55,6 +56,7 @@ export async function runTurn({ specId, values, history, userMessage, applyActio
 
   const actions = [];
   const textParts = [];
+  const usage = { inputTokens: 0, outputTokens: 0, calls: 0 };
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     // Refresh the system message every round so tool results from the
@@ -66,6 +68,10 @@ export async function runTurn({ specId, values, history, userMessage, applyActio
       messages,
       tools: toChatTools(buildTools(currentSpecId)),
     });
+
+    usage.calls += 1;
+    usage.inputTokens += response.usage?.prompt_tokens ?? 0;
+    usage.outputTokens += response.usage?.completion_tokens ?? 0;
 
     const choice = response.choices[0];
     const message = choice.message;
@@ -110,5 +116,5 @@ export async function runTurn({ specId, values, history, userMessage, applyActio
     textParts.join('\n\n').trim() ||
     "Got it — I've recorded that. What would you like to do next?";
 
-  return { text, actions };
+  return { text, actions, usage };
 }

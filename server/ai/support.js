@@ -1,7 +1,8 @@
 import Client from 'openai';
-import { AI_MODE, MODEL, OPENROUTER_API_KEY } from '../config.js';
+import { AI_MODE, MODEL, OPENROUTER_API_KEY, OPENROUTER_BASE_URL } from '../config.js';
 import { DOCUMENT_SPECS } from '../documentSpecs.js';
 import { FIRM, firmSummary } from '../firm.js';
+import { PRICING, pricingSummary } from '../pricing.js';
 
 /**
  * Help & Support agent. Answers questions about the app, the supported
@@ -11,10 +12,11 @@ import { FIRM, firmSummary } from '../firm.js';
  */
 
 const ESCALATE = '[[ESCALATE]]';
+const PRICING_MARK = '[[PRICING]]';
 
 const client =
   AI_MODE === 'openrouter'
-    ? new Client({ apiKey: OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1' })
+    ? new Client({ apiKey: OPENROUTER_API_KEY, baseURL: OPENROUTER_BASE_URL, maxRetries: 1 })
     : null;
 
 const SYSTEM = `You are the Help & Support assistant for ${FIRM.product}, a self-serve legal document app run by the law firm ${FIRM.name}.
@@ -28,6 +30,10 @@ ${DOCUMENT_SPECS.map((s) => `- ${s.name}: ${s.description}`).join('\n')}
 
 Anywhere in the app there is an "Ask Prelegal" chat button (that's you) and a Help & support panel in the top bar with phone numbers, the attorney directory and a callback request form. Users can switch between day and night mode with the sun/moon button in the top bar.
 
+## Pricing and plans
+
+${pricingSummary()}
+
 How the app works: the user picks an agreement from the "Document" menu at the top of the screen. The app then asks one question at a time and fills the answers into the document, shown on the right. The user can preview it any time and download it as Word, PDF or Markdown once required fields are filled. Drafts are saved automatically and listed under "Drafts" in the top bar. Nothing needs an account in this demo.
 
 ## How to help
@@ -35,11 +41,29 @@ How the app works: the user picks an agreement from the "Document" menu at the t
 - Answer questions about using the app, what each agreement is for, which one fits a situation, and what a common clause or field means. Be brief and plain-spoken: two to five short sentences.
 - You give general information, not legal advice. If someone asks whether a term is right for their specific situation, or needs a document reviewed, negotiated or customised, suggest a call with the partner whose focus fits, by name and direct number.
 - If you cannot answer — account or billing issues, a bug or error in the app, anything outside the information above, or the user is frustrated or asks for a person — say so plainly, point them to the help desk at ${FIRM.helpDesk.display} or ${FIRM.helpDesk.email} (${FIRM.helpDesk.hours}), and end your reply with the exact marker ${ESCALATE} on its own line.
-- Never invent firm details, prices, deadlines or policies that are not listed above.`;
+- Pricing: quote only the prices above, exactly. When someone asks which option suits them, ask roughly how many agreements they expect to need and of which kinds, then compare: single agreements cost the per-agreement price; a plan is better once they'd buy about as many agreements as its break-even figure. Whenever your reply discusses prices or plans, end it with the exact marker ${PRICING_MARK} on its own line so the app can show a View plans button. Signing up happens through a help desk callback; this demo takes no payment.
+- Never invent firm details, prices, discounts, deadlines or policies that are not listed above.`;
 
 /* ------------------------------------------------------------ scripted mode */
 
+const usd = (n) => `$${n}`;
+const [ESS, COM] = PRICING.tiers;
+const [SIX, TWELVE] = PRICING.plans;
+
 const FAQ = [
+  {
+    match: /attorney review|review cost|lawyer review cost/i,
+    pricing: true,
+    reply: `An attorney review is ${usd(PRICING.attorneyReview.price)} per agreement, or ${usd(PRICING.attorneyReview.memberPrice)} for plan members. The 6-month plan includes 1 review and the 12-month plan includes 3.`,
+  },
+  {
+    match: /price|pricing|cost|how much|plan|subscri|per document|pay\b|fee/i,
+    pricing: true,
+    reply:
+      `Single agreements are ${usd(ESS.price)} (Essential, such as an NDA) or ${usd(COM.price)} (Commercial, such as a Cloud Service Agreement). ` +
+      `Plans: ${usd(SIX.price)} for 6 months or ${usd(TWELVE.price)} for 12 months, with unlimited agreements and attorney reviews included. ` +
+      `If you expect to need more than a couple of Commercial agreements, a plan usually works out cheaper.`,
+  },
   {
     match: /(how|start|use|begin|create|make).*(document|agreement|app|nda|contract)|get started/i,
     reply:
@@ -83,7 +107,7 @@ function scriptedReply(text, context = null) {
     };
   }
   const hit = FAQ.find((f) => f.match.test(text));
-  if (hit) return { text: hit.reply, escalate: false };
+  if (hit) return { text: hit.reply, escalate: false, showPricing: Boolean(hit.pricing) };
   return {
     text: `I don't have an answer for that one. Our help desk can sort it out: call ${FIRM.helpDesk.display} or email ${FIRM.helpDesk.email} (${FIRM.helpDesk.hours}).`,
     escalate: true,
@@ -117,9 +141,15 @@ export async function supportReply(messages, context = null) {
     });
     let text = (response.choices[0]?.message?.content ?? '').trim();
     const escalate = text.includes(ESCALATE);
-    text = text.replace(ESCALATE, '').trim();
+    const showPricing = text.includes(PRICING_MARK);
+    text = text.replace(ESCALATE, '').replace(PRICING_MARK, '').trim();
     if (!text) return scriptedReply(last, context);
-    return { text, escalate };
+    const usage = {
+      inputTokens: response.usage?.prompt_tokens ?? 0,
+      outputTokens: response.usage?.completion_tokens ?? 0,
+      calls: 1,
+    };
+    return { text, escalate, showPricing, usage };
   } catch (err) {
     console.error('[support] OpenRouter request failed, using scripted answers:', err.message);
     return scriptedReply(last, context);
