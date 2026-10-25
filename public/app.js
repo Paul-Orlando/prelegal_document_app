@@ -505,7 +505,8 @@ function applyTheme(theme) {
   else delete document.documentElement.dataset.theme;
   const btn = $('theme-btn');
   btn.setAttribute('aria-label', dark ? 'Switch to day mode' : 'Switch to night mode');
-  btn.title = dark ? 'Day mode' : 'Night mode';
+  btn.title = dark ? 'Switch to day mode' : 'Switch to night mode';
+  $('theme-label').textContent = dark ? 'Day mode' : 'Night mode';
   try {
     localStorage.setItem('prelegal-theme', dark ? 'dark' : 'light');
   } catch {

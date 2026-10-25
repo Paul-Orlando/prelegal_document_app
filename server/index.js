@@ -10,7 +10,14 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(PUBLIC_DIR));
+// Revalidate HTML, CSS and JS on every load so visitors see a new deploy right away.
+app.use(
+  express.static(PUBLIC_DIR, {
+    setHeaders: (res, filePath) => {
+      if (/\.(html|css|js)$/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+    },
+  }),
+);
 app.use('/api', router);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, aiMode: AI_MODE }));

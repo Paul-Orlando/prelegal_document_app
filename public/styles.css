@@ -555,7 +555,8 @@ body.in-workspace .site-foot { display: none; }
   .topbar { grid-template-columns: auto 1fr; height: auto; padding: 10px 16px; gap: 10px; }
   .doc-picker { grid-column: 1 / -1; grid-row: 2; max-width: none; }
   .topbar-actions { justify-self: end; }
-  .bar-btn--help span { display: none; }
+  .bar-btn--help span, .theme-label { display: none; }
+  .theme-btn { padding: 8px 10px; }
   .brand-firm { display: none; }
   .home { grid-template-columns: 1fr; padding: 40px 16px; gap: 40px; }
   .hero { position: static; }
@@ -576,15 +577,9 @@ body.in-workspace .site-foot { display: none; }
 
 /* ------------------------------------------------------------ theme toggle */
 
-.theme-btn {
-  display: grid; place-items: center;
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: transparent;
-}
+.theme-btn { border-color: var(--line); }
 .theme-btn:hover { border-color: var(--brass); }
-.theme-btn svg { width: 18px; height: 18px; }
+.theme-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
 .theme-btn .moon { display: block; }
 .theme-btn .sun { display: none; }
 :root[data-theme="dark"] .theme-btn .moon { display: none; }
