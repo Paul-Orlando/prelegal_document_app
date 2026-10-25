@@ -16,7 +16,7 @@ import { getSpec, isKnownField, listSpecs, missingRequiredFields } from './docum
 import { documentFilename, renderCoverPage, renderDocument } from './render.js';
 import { renderDocxBuffer, renderPdfBuffer } from './exporters.js';
 import { activeMode, runTurn } from './ai/index.js';
-import { checkRateLimit } from './rateLimit.js';
+import { LIMITS, checkLimits, limitsEnabled, minutesText } from './rateLimit.js';
 import { supportReply } from './ai/support.js';
 import { FIRM } from './firm.js';
 import { DEMO_MODE } from './config.js';
@@ -31,8 +31,6 @@ const previewMd = new MarkdownIt({ html: false, linkify: false });
 // what a user typed) is escaped by markdown-it rather than silently dropped.
 const stripTags = (text) => text.replace(/<\/?(span|label)\b[^>]*>/gi, '');
 
-const NEW_DOCUMENT_LIMIT = 30;
-const NEW_DOCUMENT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export const router = express.Router();
 
@@ -121,15 +119,24 @@ router.get('/documents', requireAuth, (req, res) => {
 });
 
 router.post('/documents', requireAuth, (req, res) => {
-  const limit = checkRateLimit(req.ip, NEW_DOCUMENT_LIMIT, NEW_DOCUMENT_WINDOW_MS);
+  const { specId = null, title } = req.body ?? {};
+  // Validate first, so a bad request doesn't use up the visitor's allowance.
+  if (specId && !getSpec(specId)) return res.status(400).json({ error: 'Unknown document type.' });
+
+  const limit = checkLimits([
+    { key: `doc:visitor:${req.user.id}`, ...LIMITS.documentsPerVisitor },
+    { key: `doc:address:${req.ip}`, ...LIMITS.documentsPerAddress },
+  ]);
   if (!limit.allowed) {
     return res.status(429).json({
-      error: `This demo allows ${NEW_DOCUMENT_LIMIT} new documents per hour. Try again in about ${limit.retryAfterMinutes} minute${limit.retryAfterMinutes === 1 ? '' : 's'}.`,
+      limit: 'documents',
+      retryAfterMinutes: limit.retryAfterMinutes,
+      error:
+        `This demo allows ${LIMITS.documentsPerVisitor.max} new documents per hour. ` +
+        `You can start another in ${minutesText(limit.retryAfterMinutes)}. ` +
+        'Meanwhile you can keep working on your drafts, see Pricing, or ask Prelegal a question.',
     });
   }
-
-  const { specId = null, title } = req.body ?? {};
-  if (specId && !getSpec(specId)) return res.status(400).json({ error: 'Unknown document type.' });
 
   const spec = specId ? getSpec(specId) : null;
   const doc = createDocument(req.user.id, {
@@ -193,6 +200,17 @@ router.post('/documents/:id/messages', requireAuth, async (req, res, next) => {
     }
     if (!content) return res.status(400).json({ error: 'Message cannot be empty.' });
     if (content.length > 8000) return res.status(400).json({ error: 'Message is too long.' });
+
+    // Cap the AI conversation per document, so one draft can't become an endless chat.
+    const answered = listMessages(doc.id).filter((m) => m.role === 'assistant').length;
+    if (answered >= LIMITS.answersPerDocument && limitsEnabled()) {
+      return res.status(429).json({
+        limit: 'answers',
+        error:
+          `This draft has reached the demo's limit of ${LIMITS.answersPerDocument} answers. ` +
+          'You can still preview and download it, or start a new document.',
+      });
+    }
 
     const history = listMessages(doc.id).map((m) => ({ role: m.role, content: m.content }));
     const userMessage = kickoff ? null : addMessage(doc.id, 'user', content);
@@ -329,10 +347,16 @@ router.get('/support/firm', (_req, res) => {
 
 router.post('/support/chat', async (req, res, next) => {
   try {
-    const limit = checkRateLimit(`support:${req.ip}`, 60, 60 * 60 * 1000);
+    // The chat works without a session, so a visitor is their cookie when they have one.
+    const visitor = getSessionUser(parseCookies(req.headers.cookie)[COOKIE])?.id ?? `ip:${req.ip}`;
+    const limit = checkLimits([
+      { key: `support:visitor:${visitor}`, ...LIMITS.supportPerVisitor },
+      { key: `support:address:${req.ip}`, ...LIMITS.supportPerAddress },
+    ]);
     if (!limit.allowed) {
       return res.status(429).json({
-        error: `Too many questions for now. Call the help desk at ${FIRM.helpDesk.display} instead.`,
+        limit: 'support',
+        error: `That's the demo's limit for questions this hour. Try again in ${minutesText(limit.retryAfterMinutes)}, or call the help desk at ${FIRM.helpDesk.display}.`,
       });
     }
     const raw = Array.isArray(req.body?.messages) ? req.body.messages : [];

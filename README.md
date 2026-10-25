@@ -1,126 +1,117 @@
-[![Deployed on Railway](https://img.shields.io/badge/deployed%20on-Railway-0B0D0E?style=flat&logo=railway)](https://railway.app)
+[![Deployed on Railway](https://img.shields.io/badge/deployed%20on-Railway-0B0D0E?style=flat&logo=railway)](https://prelegaldocumentapp-production.up.railway.app/)
+[![Tests](https://img.shields.io/badge/tests-152%20passing-2f7d4f?style=flat)](docs/TESTING.md)
+[![Assistant evaluation](https://img.shields.io/badge/assistant%20evaluation-99%25-b5862a?style=flat)](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # Prelegal
 
-An AI chat that interviews you about a legal agreement and builds it from Common Paper's open, CC BY 4.0-licensed standard templates.
+An AI-guided legal document app for a fictional Atlanta law firm, Ashford & Kane LLP. Pick an agreement, answer a few questions one at a time, and get a professionally typeset contract built on Common Paper's open standard terms, with an AI assistant and the firm's help desk a click away.
 
-## Live Demo
+**Live demo:** https://prelegaldocumentapp-production.up.railway.app/
 
-**Try it now:** https://prelegaldocumentapp-production.up.railway.app/
-
-The app is deployed and running with OpenRouter AI integration.
-
-### Demo mode — no sign-in
-
-There is no login. Each browser is given its own guest workspace automatically the first time it opens the app, so drafts stay private to that browser.
-
-## Features
-
-- 📋 11 supported agreement types
-- 🤖 Multi-turn AI interview
-- 📥 Export as Markdown, PDF, or Word
-- 🧭 Agreement picker in the top bar, one question at a time
-- 🛟 Help & support panel: firm phone numbers, attorneys, an AI support assistant that hands off to the help desk, and callback requests
-- 💬 "Ask Prelegal" chat assistant on every screen; it knows which question you're on and hands off to the help desk when it can't help
-- 💲 Pricing and plans: $49 or $99 per agreement, or 6-month ($249) and 12-month ($449) plans; Ask Prelegal explains and recommends them (see `docs/PRICING.md`)
-- 🌗 Day and night modes (day by default), remembered per browser
-- 🔐 Per-browser guest workspaces (no sign-in)
-- 🚀 Deploy-ready with Railway
-
-## Deploy Your Own
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app)
-
-1. Fork this repo
-2. Set `OPENROUTER_API_KEY` in Railway variables
-3. Deploy
+> **Demo only.** Prelegal shows what an AI legal-document service could look like. It is not a live legal service: every download is watermarked **SAMPLE** and marked not for use, nothing here is legal advice, and the firm, attorneys, phone numbers and prices are fictional. Don't use it for real legal matters.
 
 ## What it does
 
-- Pick an agreement from the menu in the top bar (or from the list on the home page).
-- Prelegal asks one question at a time and fills each answer into the document, shown live on the right. Earlier questions aren't shown, just the current one and a confirmation of what was recorded.
-- Drafts save automatically and are listed under **Drafts** in the top bar.
-- **Help & support** (top right) has the firm's main line and help desk, the attorney directory, an AI support assistant, and a callback request form. When the assistant can't answer, it points the user to the help desk.
-- If you ask for something it doesn't support, it says so and offers the closest thing it can generate instead — it never fakes an unsupported document.
-- Preview the assembled document at any point, and download it as Markdown, PDF, or Word (.docx) once it's ready.
+- **Pick an agreement from the top bar.** 11 standard agreements: Mutual NDA, Cloud Service, Service Level, Data Processing, Design Partner, Professional Services, Partnership, Business Associate, Software License, Pilot and AI Addendum.
+- **One question at a time.** The AI interviewer asks for each detail in plain language and saves it to the document, shown live on the right. No chat history to scroll through; just the current question and a note of what was recorded.
+- **Professional documents.** PDF and Word exports with the firm letterhead and scale-and-pen logo, a Key Terms table, numbered Standard Terms (1. / 1.1 / (a)), a signature page, and "Page X of Y" footers. Markdown too.
+- **Ask Prelegal.** An AI chat on every screen that recommends the right agreement, explains the question you're on, answers pricing questions and recommends a plan, and hands off to the help desk when it can't help.
+- **Help & support.** Call the firm or the help desk, see the four attorneys and what each covers, or request a callback.
+- **Pricing and plans.** $49 or $99 per agreement, a 6-month plan ($249) or a 12-month plan ($449), and attorney review ($195, or $150 for plan members). Prices were set against online legal services and Atlanta firm rates; see [docs/PRICING.md](docs/PRICING.md).
+- **No sign-in.** Each browser gets its own private guest workspace; drafts save automatically under Drafts.
+- **Day and night modes**, light by default, and a layout that works on phones.
 
-Supported agreements: Mutual NDA, Cloud Service Agreement, Service Level Agreement, Data Processing Agreement, Design Partner Agreement, Professional Services Agreement, Partnership Agreement, Business Associate Agreement, Software License Agreement, Pilot Agreement, AI Addendum. See `catalog.json` for the full list with descriptions, and `templates/` for the underlying Common Paper Standard Terms.
+## Demo safeguards
 
-## Quick start
+| Safeguard | What it does |
+|---|---|
+| Sample marking | Every page of every download carries a SAMPLE watermark and "not for use, not legal advice, and not to be signed"; filenames start with `SAMPLE-` |
+| Demo notice | A "Demo only" strip on every page and a "Before you start" acknowledgment on the first visit |
+| Usage limits | **2 new documents per visitor per hour**, with a backstop of 6 per network address (so clearing cookies doesn't give unlimited tries, and an office sharing one address isn't blocked); 40 answers per document; 20 Ask Prelegal questions per visitor per hour |
+| Paywall, built but off | With `PRELEGAL_PAYMENTS=on`, downloads need a purchased agreement or an active plan. In the demo, downloads are free and the note above Download shows what it would cost |
+| Spending | All limits are counted on the server. Set a monthly limit on the OpenRouter key as well |
+
+## How it was tested
+
+Three layers, the same approach as Gatewell Parts Desk. Details in [docs/TESTING.md](docs/TESTING.md).
+
+**1. Automated tests: 152, free, no API key.** They run against a throwaway database with a scripted stand-in for the model, and cover visitor isolation, every usage limit, the interview, Ask Prelegal and help desk handoff, pricing, the paywall, PDF and Word exports for all 11 agreements, sample marking, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are committed. They found and fixed two real bugs along the way.
+
+**2. Assistant evaluation: 84% → 99%.** 45 graded questions in 7 groups, 3 runs each, against the real model (`openai/gpt-4o-mini`). The interviewer is graded on what it actually saved to the document, not just on its wording; Ask Prelegal on facts, prices, handoffs and refusals.
+
+| | Baseline | After fixes |
+|---|---|---|
+| Runs passed | 113 of 135 (84%) | **134 of 135 (99%)** |
+| Questions passed on every run | 36 of 45 (80%) | 44 of 45 (98%) |
+| Help desk handoff correct | 47 of 63 | 63 of 63 |
+| "Which agreement do I need?" group | 7% | 100% |
+| Average reply time | 1.3 s | 1.2 s |
+| Cost of the full run | $0.068 | $0.071 |
+
+The interviewer passed every run from the start. The baseline failures were all in Ask Prelegal: it flagged ordinary answers for help desk handoff, named the wrong attorney, and wrote a poem when asked for one. The fixes were clearer instructions plus two server-side checks that don't rely on the model obeying them: a handoff only counts if the reply actually gives the help desk's number, and the View plans button only shows if the reply actually states a price. The one remaining failure was a correct answer the grader didn't recognise; after widening that check (logged in [eval/SCORING_CHANGES.md](eval/SCORING_CHANGES.md)), re-grading the saved answers gives 135 of 135. Full reports: [baseline](eval/results/2026-10-25_openai-gpt-4o-mini.md), [after fixes](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes.md), [rescored](eval/results/2026-10-25_openai-gpt-4o-mini_after-fixes_rescored.md).
+
+**3. User test kit.** A 20-minute session script with timed tasks done with and without the assistant, plus results and summary templates in [docs/user_test/](docs/user_test/), and a five-minute [demo script](docs/DEMO_SCRIPT.md).
+
+## Run it locally
+
+Requires Node.js 22.5 or later.
 
 ```
 npm install
 npm start
 ```
 
-Then open http://localhost:3000. Without any configuration the app runs against a **scripted interviewer** (no AI, no API key needed) — it walks through the same required fields in order, so the whole app is testable for free.
-
-To turn on the real AI chat, copy `.env.example` to `.env` and set `OPENROUTER_API_KEY` (get one at https://openrouter.ai/keys). Restart the server and the sidebar badge will switch from "AI chat: scripted" to "AI chat: OpenRouter". If the OpenRouter API call ever fails mid-conversation, the app automatically falls back to the scripted interviewer for that turn rather than breaking.
-
-## Running as a background service
+Open http://localhost:3000. Without an API key the app uses a scripted interviewer, so everything works for free. For the real AI, copy `.env.example` to `.env` and set `OPENROUTER_API_KEY` (from https://openrouter.ai/keys). If the AI service fails mid-conversation, the app falls back to the scripted interviewer for that turn instead of breaking.
 
 ```
-scripts/start.ps1   # Windows PowerShell
-scripts/start.sh     # macOS/Linux
+npm test                                # 152 automated tests, free
+npm run eval -- --limit 3 --runs 1      # assistant smoke test, about $0.01
+npm run eval                            # full evaluation, 45 questions × 3 runs, about $0.07
 ```
 
-starts the server in the background and writes its PID to `.data/server.pid`. Use the matching `stop.ps1` / `stop.sh` to shut it down. Logs land in `.data/server.log`.
+On Windows, `eval.bat` runs the evaluation the same way. See [eval/README.md](eval/README.md) for every option.
 
-## Architecture
+## Settings
 
-- **Frontend** — static HTML/CSS/vanilla JS in `public/`, no build step.
-- **Backend** — Express (`server/`), a small REST API under `/api`.
-- **Database** — SQLite via Node's built-in `node:sqlite` (no native dependency to compile). File lives at `.data/prelegal.db` by default.
-- **AI** — `server/ai/` defines a provider interface with two implementations: `openrouterProvider.js` (real calls to OpenRouter's Chat Completions API, with function calling) and `mockProvider.js` (deterministic script). `server/ai/index.js` picks one based on whether `OPENROUTER_API_KEY` is set.
-- **Document model** — `server/documentSpecs.js` defines the fields for each supported agreement, derived from the variables the underlying Common Paper Standard Terms actually reference. `server/render.js` turns field values into a Prelegal-authored cover page followed by the incorporated Standard Terms.
-- **Export**: `server/docModel.js` parses the Standard Terms into numbered clauses (1. / 1.1 / (a)) and builds one document model; `server/pdfExport.js` (pdfkit) and `server/docxExport.js` (`docx`) typeset it with the Prelegal letterhead and logo, a Key Terms table, numbered Standard Terms, a signature page with drawn signature lines, a running header and "Page X of Y" footers. Unfinished documents are marked "Draft — not for signature". Libre Caslon (SIL Open Font License, `server/assets/fonts/`) is embedded in both formats. `GET /api/documents/:id/download?format=md|pdf|docx` serves whichever format is requested.
-- **Rate limiting** — `server/rateLimit.js` is a minimal in-memory limiter keyed by client IP, applied to new-document creation (3/hour). It's single-process and resets on restart, not a production rate limiter.
+All optional; see `.env.example`.
 
-Only the Mutual NDA repo publishes a fillable cover page upstream — every other Common Paper agreement is Standard Terms only, so Prelegal authors its own cover page for those, built from the variables each agreement's Standard Terms reference.
+| Setting | Default | Purpose |
+|---|---|---|
+| `OPENROUTER_API_KEY` | none | Turns on the real AI; without it the scripted interviewer runs |
+| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Model for both assistants; must support tool calling |
+| `PRELEGAL_DEMO_MODE` | `on` | Sample marking and demo notice. `off` only for a real launch |
+| `PRELEGAL_DEMO_LIMITS` | `on` | Usage limits. Only the evaluation runner switches them off |
+| `PRELEGAL_PAYMENTS` | `off` | The paywall |
+| `PRELEGAL_PAYMENT_PROVIDER` | none | `test` simulates payment locally; refused in production |
+| `PORT`, `DB_PATH` | `3000`, `.data/prelegal.db` | Server port and database file |
 
-## Test it
+## Deploy your own
 
-```
-npm install
-npm test
-```
+1. Fork this repository.
+2. Create a Railway project from it and set `OPENROUTER_API_KEY`.
+3. Set a monthly spending limit on the key in your OpenRouter account.
 
-The automated tests run against a throwaway database with the scripted interviewer, so they need no API key and cost nothing. They cover guest sessions and isolation between visitors, documents and the demo limits, the interview flow, the support assistant and help desk handoff, callback requests, pricing, PDF and Word exports for all 11 agreements, clause numbering, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are in the repository.
+Railway redeploys on every push to `main`, and uses `/api/health` (503 when the database can't be read) as the health check.
 
-## Evaluate the assistant
+## How it's built
 
-```
-npm run eval -- --limit 3 --runs 1      # smoke test, about $0.01
-npm run eval                            # all 45 questions, 3 runs each
-```
-
-The evaluation asks the real model 45 graded questions about drafting, pricing, help desk handoffs and guardrails, grades the interviewer on what it actually saved to the document, and writes a report with pass rate, consistency, time and cost to `eval/results/`. On Windows, `eval.bat` does the same. See `eval/README.md`, and `docs/TESTING.md` for the full testing plan, user-test kit and demo script.
-
-## Firm details
-
-The firm shown in the app (Ashford & Kane LLP, its address, phone numbers, attorneys and help desk) is **fictional demo data**. Edit `server/firm.js` to replace it; the UI and the support assistant both read from that one file.
+- **Frontend:** plain HTML, CSS and JavaScript in `public/`, no build step.
+- **Backend:** Express in `server/`; `app.js` builds the app, `routes.js` holds the API, `rateLimit.js` the usage limits, `payments.js` the paywall, `pricing.js` the prices, `firm.js` the fictional firm.
+- **Database:** SQLite through Node's built-in `node:sqlite`.
+- **AI:** OpenRouter through the OpenAI SDK, in `server/ai/`. The interviewer can only set the agreement type, set that agreement's known fields, and mark it complete. Ask Prelegal (`support.js`) answers from the firm, pricing and agreement information it's given, with server-side checks on its handoff and pricing markers.
+- **Documents:** `docModel.js` parses Common Paper's Standard Terms into numbered clauses; `pdfExport.js` (pdfkit) and `docxExport.js` (docx) typeset the same model with Libre Caslon embedded.
+- **Project rules** for Claude Code are in [CLAUDE.md](CLAUDE.md).
 
 ## Known gaps
 
-- Callback requests are stored in the `support_tickets` table but nothing notifies anyone yet; wire it to email or your help desk tool before real use.
+- The usage limits are kept in memory: they reset when the server restarts and aren't shared across several server instances. Fine for one demo instance; a real launch would use a shared store.
+- Callback requests are saved but don't notify anyone yet.
+- No real payment provider is connected; going live means adding one in `server/payments.js` (see [docs/PRICING.md](docs/PRICING.md)).
+- Prices were benchmarked in October 2026 and should be rechecked before any launch.
 
-- Passwords are hashed with scrypt and sessions use random-token cookies — solid for a small deployment, but there's no rate limiting, email verification, or password reset flow.
-- No test suite yet; the flows above were verified manually end-to-end (registration, multi-user isolation, chat interview, preview, download) for this build.
-- `npm audit` reports a moderate advisory in Express's bundled `qs` (query-string parsing) — this app never parses query strings, so it isn't exploitable here, but a future Express major-version upgrade would clear it.
-- The rate limiter is per-process, in-memory state — restarting the server (or running more than one instance) resets/fragments the counts. Fine for a single demo instance, not for a real deployment.
-- Signature blocks are drawn as blank lines for wet or PDF signatures; there is no e-signature integration.
+## Credits and license
 
-## License
+Agreements are built on the [Common Paper](https://commonpaper.com) standard agreements, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Libre Caslon is used under the SIL Open Font License (`server/assets/fonts/OFL.txt`).
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
-
-MIT License
-
-Copyright (c) 2026 Paul Orlando
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+This project is licensed under the MIT License; see [LICENSE](LICENSE).

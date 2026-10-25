@@ -15,7 +15,7 @@
 ## Before each session (facilitator)
 
 1. Start the app with `npm start` and open http://localhost:3000 in a **new private window** for each person, so they start with no drafts and see the "Before you start" notice.
-2. The demo limits allow 30 new documents and 60 chat questions per hour from one address, which is plenty for a session. For back-to-back sessions on one computer, restart the app between people.
+2. The demo allows 2 new documents per visitor per hour, which isn't enough for a session of tasks. For test sessions on your own computer, start the app with the limits off: `PRELEGAL_DEMO_LIMITS=off npm start` (in PowerShell: `$env:PRELEGAL_DEMO_LIMITS='off'; npm start`). Never switch them off on the live site.
 3. Check the participant's **order** below and set up `results_template.csv`.
 4. Keep the answer key (end of this document) where the participant can't see it.
 

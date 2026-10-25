@@ -815,3 +815,5 @@ body.in-workspace .chat-launcher { bottom: 88px; }
   .demo-strip { position: static; font-size: 12px; padding: 6px 12px; }
   .topbar { top: 0; }
 }
+
+.toast--long { max-width: min(560px, calc(100vw - 32px)); border-radius: 14px; text-align: center; line-height: 1.45; }

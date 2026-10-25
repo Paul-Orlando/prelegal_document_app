@@ -90,14 +90,6 @@ describe('support assistant (scripted mode)', () => {
     });
     assert.equal(res.status, 200);
   });
-
-  test('60 questions per hour per visitor address, then the help desk number', async () => {
-    const c = new Client(srv.base, { ip: '10.2.0.60' });
-    for (let i = 0; i < 60; i++) assert.equal((await ask(c, 'How do I download?')).status, 200);
-    const res = await ask(c, 'How do I download?');
-    assert.equal(res.status, 429);
-    assert.match(res.data.error, /\(404\) 555-0199/);
-  });
 });
 
 describe('callback requests', () => {

@@ -22,7 +22,7 @@ async function api(path, options = {}) {
   });
   const isJson = (res.headers.get('content-type') || '').includes('application/json');
   const data = isJson ? await res.json() : null;
-  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+  if (!res.ok) throw Object.assign(new Error(data?.error || `Request failed (${res.status})`), { status: res.status, data });
   return data;
 }
 
@@ -80,12 +80,13 @@ function splitConfirmation(text) {
   return { confirmation: null, question: text };
 }
 
-function toast(message) {
+function toast(message, ms = 2600) {
   const el = $('toast');
   el.textContent = message;
+  el.classList.toggle('toast--long', message.length > 60);
   el.classList.remove('hidden');
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => el.classList.add('hidden'), 2600);
+  toast.t = setTimeout(() => el.classList.add('hidden'), ms);
 }
 
 const specById = (id) => state.catalog.find((s) => s.id === id);
@@ -335,13 +336,14 @@ async function startDocument(specId) {
   $('home-error').classList.add('hidden');
 
   try {
-    // Throw away an untouched draft instead of leaving it in the Drafts menu.
     const prev = state.current;
+    const { document: doc } = await api('/documents', { method: 'POST', body: { specId } });
+
+    // Only once the new one exists: throw away an untouched draft instead of
+    // leaving it in the Drafts menu.
     if (prev && !Object.values(prev.values).some((v) => String(v ?? '').trim())) {
       await api(`/documents/${prev.id}`, { method: 'DELETE' }).catch(() => {});
     }
-
-    const { document: doc } = await api('/documents', { method: 'POST', body: { specId } });
     state.current = doc;
     history.replaceState(null, '', `#doc/${doc.id}`);
     showWorkspace();
@@ -350,11 +352,12 @@ async function startDocument(specId) {
     await kickoff();
     await loadDocuments();
   } catch (err) {
-    if (state.current) {
-      toast(err.message);
-    } else {
+    const onHome = !$('home').classList.contains('hidden');
+    if (onHome) {
       $('home-error').textContent = err.message;
       $('home-error').classList.remove('hidden');
+    } else {
+      toast(err.message, err.data?.limit ? 9000 : 4000);
     }
     $('doc-select').value = state.current?.specId || '';
   }
@@ -381,7 +384,7 @@ async function send({ content = '', kickoff = false } = {}) {
     loadDocuments();
   } catch (err) {
     setThinking(false);
-    showQuestion(`That didn't go through: ${err.message}\n\nTry sending your answer again.`);
+    showQuestion(err.data?.limit ? err.message : `That didn't go through: ${err.message}\n\nTry sending your answer again.`);
     if (content) $('answer-input').value = content;
   } finally {
     state.sending = false;

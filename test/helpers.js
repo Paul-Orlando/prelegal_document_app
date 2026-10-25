@@ -13,7 +13,9 @@ import zlib from 'node:zlib';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'prelegal-test-'));
 process.env.DB_PATH = path.join(tmp, 'test.db');
 process.env.PRELEGAL_AI_MODE ??= 'mock';
-process.env.PRELEGAL_DEMO_LIMITS ??= 'on';
+// Limits are off for most tests (they create many documents); test/limits.test.js
+// switches them on and checks each one.
+process.env.PRELEGAL_DEMO_LIMITS ??= 'off';
 
 process.on('exit', () => {
   try {

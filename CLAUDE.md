@@ -5,7 +5,7 @@ AI-guided legal document demo for the fictional firm Ashford & Kane LLP. Express
 ## Never weaken these
 - **Demo mode** (`PRELEGAL_DEMO_MODE`, on by default): every download is watermarked SAMPLE and marked not for use; the site shows the demo notice and first-visit acknowledgment. Never remove the marking or make demo mode default to off.
 - **Isolation:** every document route uses `requireAuth` and every query filters by the visitor's `user_id`. One visitor must never reach another's documents.
-- **Demo limits** (`server/rateLimit.js`): counted on the server, on by default. Only the evaluation runner switches them off.
+- **Demo limits** (`LIMITS` in `server/rateLimit.js`): 2 new documents per visitor per hour with a per-address backstop, 40 answers per document, and Ask Prelegal questions per hour. Counted on the server, on by default. Only the evaluation runner and local user-test sessions switch them off; never the live site.
 - **Paywall** (`server/payments.js`, `PRELEGAL_PAYMENTS`, off by default): prices always come from `server/pricing.js` on the server, never from the request. The `test` payment provider must stay refused in production.
 - **Prices** live only in `server/pricing.js`. Derived numbers (per month, break-even) are computed, never hand-typed.
 - **AI tools** (`server/ai/tools.js`): the model can only set the agreement type, set known fields, and mark complete. Field values are validated against the agreement's fields.
