@@ -666,3 +666,8 @@ body.in-workspace .chat-launcher { bottom: 88px; }
   body.in-workspace .chat-launcher { bottom: 16px; }
   .chatbot { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); }
 }
+
+@media (min-width: 1081px) {
+  body.in-workspace .chatbot { right: 464px; }
+  body.in-workspace .chat-launcher { right: 464px; bottom: 24px; }
+}
