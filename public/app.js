@@ -395,6 +395,8 @@ function renderFirm() {
   $('esc-phone').textContent = f.helpDesk.display;
   $('esc-email').href = `mailto:${f.helpDesk.email}`;
   $('esc-email').textContent = f.helpDesk.email;
+  $('chatbot-call').href = `tel:${f.helpDesk.tel}`;
+  $('chatbot-call').textContent = `Call ${f.helpDesk.display}`;
 
   $('help-address').innerHTML =
     `${escapeHtml(f.name)}<br>${escapeHtml(f.address.line1)}<br>` +
@@ -417,14 +419,42 @@ function renderFirm() {
     .join('');
 }
 
+const GREETING =
+  "Hi, I'm the Prelegal assistant. Ask me which agreement fits your deal, what a question means, or how to download your document. If I can't help, I'll put you in touch with our help desk.";
+
+/** The support conversation is shared by the chat widget and the Help & support panel. */
 function renderSupport() {
-  const log = $('support-log');
-  log.innerHTML = state.support
+  const html = state.support
     .map((m) => `<div class="s-msg ${m.role}">${inline(escapeHtml(m.content))}</div>`)
     .join('');
-  if (state.supportBusy) log.insertAdjacentHTML('beforeend', '<div class="s-msg assistant typing">Looking into it…</div>');
+  const typing = state.supportBusy ? '<div class="s-msg assistant typing">Looking into it…</div>' : '';
+
+  const panelLog = $('support-log');
+  panelLog.innerHTML = html + typing;
   $('support-suggest').classList.toggle('hidden', state.support.length > 0);
-  log.lastElementChild?.scrollIntoView({ block: 'nearest' });
+
+  const botLog = $('chatbot-log');
+  botLog.innerHTML = `<div class="s-msg assistant">${escapeHtml(GREETING)}</div>` + html + typing;
+  $('chatbot-suggest').classList.toggle('hidden', state.support.length > 0);
+  botLog.scrollTop = botLog.scrollHeight;
+  panelLog.lastElementChild?.scrollIntoView({ block: 'nearest' });
+}
+
+function showEscalation() {
+  $('escalate').classList.remove('hidden');
+  $('chatbot-escalate').classList.remove('hidden');
+  requestAnimationFrame(() => {
+    if (!$('help').hidden) $('escalate').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+}
+
+/** What the user is looking at, so the assistant can explain the current question. */
+function supportContext() {
+  if (!state.current || $('workspace').classList.contains('hidden')) return undefined;
+  return {
+    documentType: state.current.specName,
+    question: $('question-text').innerText.trim().slice(0, 800),
+  };
 }
 
 async function askSupport(question) {
@@ -433,18 +463,53 @@ async function askSupport(question) {
   state.supportBusy = true;
   renderSupport();
   try {
-    const res = await api('/support/chat', { method: 'POST', body: { messages: state.support } });
+    const res = await api('/support/chat', {
+      method: 'POST',
+      body: { messages: state.support, context: supportContext() },
+    });
     state.support.push({ role: 'assistant', content: res.text });
-    if (res.escalate) {
-      $('escalate').classList.remove('hidden');
-      requestAnimationFrame(() => $('escalate').scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
-    }
+    if (res.escalate) showEscalation();
   } catch (err) {
     state.support.push({ role: 'assistant', content: err.message });
-    $('escalate').classList.remove('hidden');
+    showEscalation();
   } finally {
     state.supportBusy = false;
     renderSupport();
+  }
+}
+
+/* ------------------------------------------------------------ chat widget */
+
+function openChat() {
+  if (!$('help').hidden) closeHelp();
+  $('chip-explain').classList.toggle('hidden', !supportContext());
+  $('chatbot').hidden = false;
+  $('chat-launcher').classList.add('hidden');
+  $('chat-launcher').setAttribute('aria-expanded', 'true');
+  renderSupport();
+  $('chatbot-input').focus();
+}
+
+function closeChat() {
+  $('chatbot').hidden = true;
+  $('chat-launcher').classList.remove('hidden');
+  $('chat-launcher').setAttribute('aria-expanded', 'false');
+  $('chat-launcher').focus();
+}
+
+/* ------------------------------------------------------------ day / night */
+
+function applyTheme(theme) {
+  const dark = theme === 'dark';
+  if (dark) document.documentElement.dataset.theme = 'dark';
+  else delete document.documentElement.dataset.theme;
+  const btn = $('theme-btn');
+  btn.setAttribute('aria-label', dark ? 'Switch to day mode' : 'Switch to night mode');
+  btn.title = dark ? 'Day mode' : 'Night mode';
+  try {
+    localStorage.setItem('prelegal-theme', dark ? 'dark' : 'light');
+  } catch {
+    /* storage unavailable: the choice lasts for this visit only */
   }
 }
 
@@ -523,13 +588,46 @@ $('delete-doc').onclick = async () => {
   }
 };
 
-$('help-btn').onclick = openHelp;
+$('help-btn').onclick = () => {
+  if (!$('chatbot').hidden) closeChat();
+  openHelp();
+};
+$('theme-btn').onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+
+$('chat-launcher').onclick = openChat;
+for (const el of document.querySelectorAll('[data-open-chat]')) el.onclick = openChat;
+$('chatbot-close').onclick = closeChat;
+$('chatbot-clear').onclick = () => {
+  state.support = [];
+  $('chatbot-escalate').classList.add('hidden');
+  $('escalate').classList.add('hidden');
+  renderSupport();
+  $('chatbot-input').focus();
+};
+$('chatbot-form').onsubmit = (e) => {
+  e.preventDefault();
+  const q = $('chatbot-input').value.trim();
+  $('chatbot-input').value = '';
+  askSupport(q);
+};
+for (const chip of document.querySelectorAll('#chatbot-suggest .chip')) {
+  chip.onclick = () => askSupport(chip.dataset.q);
+}
+$('chatbot-callback').onclick = () => {
+  closeChat();
+  openHelp();
+  $('callback-form').classList.remove('hidden');
+  $('callback-form').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  $('cb-name').focus();
+};
 $('help-close').onclick = closeHelp;
 $('help-scrim').onclick = closeHelp;
 for (const el of document.querySelectorAll('[data-open-help]')) el.onclick = openHelp;
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!$('help').hidden) closeHelp();
+    else if (!$('chatbot').hidden) closeChat();
     else closeDrafts();
   }
 });

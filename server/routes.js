@@ -321,7 +321,16 @@ router.post('/support/chat', async (req, res, next) => {
     if (!messages.length || messages[messages.length - 1].role !== 'user') {
       return res.status(400).json({ error: 'Ask a question first.' });
     }
-    res.json(await supportReply(messages));
+    // Optional: what the user is drafting and the question on screen.
+    const ctx = req.body?.context;
+    const context =
+      ctx && typeof ctx === 'object'
+        ? {
+            documentType: String(ctx.documentType ?? '').slice(0, 120),
+            question: String(ctx.question ?? '').slice(0, 800),
+          }
+        : null;
+    res.json(await supportReply(messages, context));
   } catch (err) {
     next(err);
   }

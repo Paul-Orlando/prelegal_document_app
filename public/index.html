@@ -13,6 +13,12 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
+    <script>
+      // Apply the saved theme before first paint so the page never flashes dark.
+      try {
+        if (localStorage.getItem('prelegal-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -66,6 +72,10 @@
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 11.5v-1a6.5 6.5 0 0 1 13 0v1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="11" width="3.5" height="5" rx="1.2" fill="currentColor"/><rect x="14" y="11" width="3.5" height="5" rx="1.2" fill="currentColor"/></svg>
           <span>Help &amp; support</span>
         </button>
+        <button id="theme-btn" class="theme-btn" aria-label="Switch to night mode" title="Night mode">
+          <svg class="moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.6A6.5 6.5 0 0 1 7.4 4.5a6.5 6.5 0 1 0 8.1 8.1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <svg class="sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.8v2.2M10 16v2.2M1.8 10H4M16 10h2.2M4.2 4.2l1.6 1.6M14.2 14.2l1.6 1.6M4.2 15.8l1.6-1.6M14.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
       </nav>
     </header>
 
@@ -100,9 +110,9 @@
           <svg class="counsel-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
           <div>
             <p class="counsel-title">Not sure which agreement fits?</p>
-            <p class="counsel-copy">Ask our support assistant, or call the firm at <a id="home-phone" href="tel:+14045550142">(404) 555-0142</a>.</p>
+            <p class="counsel-copy">Ask the Prelegal assistant, or call the firm at <a id="home-phone" href="tel:+14045550142">(404) 555-0142</a>.</p>
           </div>
-          <button class="btn btn--quiet" data-open-help>Ask a question</button>
+          <button class="btn btn--quiet" data-open-chat>Ask a question</button>
         </aside>
       </section>
 
@@ -144,7 +154,7 @@
           </form>
 
           <p class="stage-help">
-            Stuck on a question? <button class="text-btn" data-open-help>Ask support</button> or call
+            Stuck on a question? <button class="text-btn" data-open-chat>Ask the assistant</button> or call
             <a href="tel:+14045550142">(404) 555-0142</a>.
           </p>
         </div>
@@ -281,6 +291,49 @@
         </section>
       </div>
     </aside>
+
+    <!-- ---------------------------------------------------- chat assistant -->
+    <button id="chat-launcher" class="chat-launcher" aria-controls="chatbot" aria-expanded="false">
+      <span class="launch-mark" aria-hidden="true"><svg><use href="#logo-mark" /></svg></span>
+      <span class="launch-label">Ask Prelegal</span>
+    </button>
+
+    <section id="chatbot" class="chatbot" role="dialog" aria-labelledby="chatbot-title" hidden>
+      <header class="chatbot-head">
+        <svg class="bot-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
+        <div>
+          <p class="chatbot-title" id="chatbot-title">Prelegal assistant</p>
+          <p class="chatbot-sub">Answers questions about the app and your agreement</p>
+        </div>
+        <div class="head-actions">
+          <button id="chatbot-clear" class="icon-btn" aria-label="Start a new conversation" title="New conversation">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 1.8-4.3M4 3.5v3h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="chatbot-close" class="icon-btn" aria-label="Close chat">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="chatbot-log" class="chatbot-log" aria-live="polite"></div>
+      <div id="chatbot-suggest" class="suggest">
+        <button class="chip" data-q="Which agreement do I need?">Which agreement do I need?</button>
+        <button class="chip" id="chip-explain" data-q="What does the question I'm on mean?">Explain this question</button>
+        <button class="chip" data-q="I'd like to talk to a lawyer.">Talk to a lawyer</button>
+      </div>
+      <div id="chatbot-escalate" class="chatbot-escalate hidden">
+        <p><strong>Our help desk can take it from here.</strong></p>
+        <div class="esc-actions">
+          <a id="chatbot-call" class="btn btn--primary" href="tel:+14045550199">Call (404) 555-0199</a>
+          <button id="chatbot-callback" class="btn btn--quiet">Request a callback</button>
+        </div>
+      </div>
+      <p class="chatbot-note">General information, not legal advice.</p>
+      <form id="chatbot-form" class="chatbot-form">
+        <label for="chatbot-input" class="sr-only">Your question</label>
+        <input id="chatbot-input" type="text" placeholder="Ask a question…" autocomplete="off" />
+        <button type="submit" class="btn btn--primary">Send</button>
+      </form>
+    </section>
 
     <div id="toast" class="toast hidden" role="status"></div>
 

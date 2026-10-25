@@ -22,6 +22,8 @@ There is no login. Each browser is given its own guest workspace automatically t
 - 📥 Export as Markdown, PDF, or Word
 - 🧭 Agreement picker in the top bar, one question at a time
 - 🛟 Help & support panel: firm phone numbers, attorneys, an AI support assistant that hands off to the help desk, and callback requests
+- 💬 "Ask Prelegal" chat assistant on every screen; it knows which question you're on and hands off to the help desk when it can't help
+- 🌗 Day and night modes (day by default), remembered per browser
 - 🔐 Per-browser guest workspaces (no sign-in)
 - 🚀 Deploy-ready with Railway
 

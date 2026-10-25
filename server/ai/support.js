@@ -26,6 +26,8 @@ ${firmSummary()}
 The app builds these agreements from Common Paper's open standard templates:
 ${DOCUMENT_SPECS.map((s) => `- ${s.name}: ${s.description}`).join('\n')}
 
+Anywhere in the app there is an "Ask Prelegal" chat button (that's you) and a Help & support panel in the top bar with phone numbers, the attorney directory and a callback request form. Users can switch between day and night mode with the sun/moon button in the top bar.
+
 How the app works: the user picks an agreement from the "Document" menu at the top of the screen. The app then asks one question at a time and fills the answers into the document, shown on the right. The user can preview it any time and download it as Word, PDF or Markdown once required fields are filled. Drafts are saved automatically and listed under "Drafts" in the top bar. Nothing needs an account in this demo.
 
 ## How to help
@@ -73,7 +75,13 @@ const FAQ = [
   },
 ];
 
-function scriptedReply(text) {
+function scriptedReply(text, context = null) {
+  if (context?.documentType && /this (question|field)|question i'?m on|what does .*mean/i.test(text)) {
+    return {
+      text: `You're drafting a ${context.documentType}. The question on screen asks: ${context.question.replace(/\*\*/g, '').slice(0, 300)}\n\nAnswer it in your own words in the main window. If it doesn't apply to your deal, say so there.`,
+      escalate: false,
+    };
+  }
   const hit = FAQ.find((f) => f.match.test(text));
   if (hit) return { text: hit.reply, escalate: false };
   return {
@@ -88,23 +96,32 @@ function scriptedReply(text) {
  * @param {{role: 'user'|'assistant', content: string}[]} messages  Conversation so far, ending with the user's message.
  * @returns {Promise<{text: string, escalate: boolean}>}
  */
-export async function supportReply(messages) {
+export async function supportReply(messages, context = null) {
   const last = messages[messages.length - 1]?.content ?? '';
-  if (!client) return scriptedReply(last);
+  if (!client) return scriptedReply(last, context);
+
+  let system = SYSTEM;
+  if (context?.documentType) {
+    system +=
+      `\n\n## What the user is doing right now\n\nThey are drafting a ${context.documentType}. ` +
+      `The question currently on their screen is:\n<question>${context.question}</question>\n` +
+      'If they ask what "this question" or "this field" means, explain that question in plain language and give a typical example answer. ' +
+      'Do not fill in the document for them; they answer in the main window.';
+  }
 
   try {
     const response = await client.chat.completions.create({
       model: MODEL,
-      messages: [{ role: 'system', content: SYSTEM }, ...messages],
+      messages: [{ role: 'system', content: system }, ...messages],
       max_tokens: 400,
     });
     let text = (response.choices[0]?.message?.content ?? '').trim();
     const escalate = text.includes(ESCALATE);
     text = text.replace(ESCALATE, '').trim();
-    if (!text) return scriptedReply(last);
+    if (!text) return scriptedReply(last, context);
     return { text, escalate };
   } catch (err) {
     console.error('[support] OpenRouter request failed, using scripted answers:', err.message);
-    return scriptedReply(last);
+    return scriptedReply(last, context);
   }
 }
