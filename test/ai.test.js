@@ -91,3 +91,40 @@ describe('when the AI service is down', () => {
     assert.match(r.supportText, /Download/);
   });
 });
+
+describe('Ask Prelegal: guards on the model\'s markers', () => {
+  // The first live evaluation showed the model adding the handoff marker to
+  // ordinary answers and the pricing marker without stating prices.
+  test('a handoff only counts when the reply gives the help desk number or email', async () => {
+    const { interpretReply } = await import('../server/ai/support.js');
+    assert.equal(interpretReply('Use a Cloud Service Agreement.\n[[ESCALATE]]').escalate, false);
+    assert.equal(interpretReply('Talk to Daniel R. Kane at (404) 555-0111.\n[[ESCALATE]]').escalate, false);
+    assert.equal(interpretReply('Please call the help desk at (404) 555-0199.\n[[ESCALATE]]').escalate, true);
+    assert.equal(interpretReply('Email helpdesk@ashfordkane.example.\n[[ESCALATE]]').escalate, true);
+    assert.equal(interpretReply('Call (404) 555-0199.').escalate, false, 'no marker, no handoff');
+  });
+
+  test('View plans only shows when the reply states a price', async () => {
+    const { interpretReply } = await import('../server/ai/support.js');
+    assert.equal(interpretReply('A Professional Services Agreement fits.\n[[PRICING]]').showPricing, false);
+    assert.equal(interpretReply('An NDA is $49.\n[[PRICING]]').showPricing, true);
+    assert.equal(interpretReply('An NDA is $49.').showPricing, false);
+  });
+
+  test('markers never reach the user', async () => {
+    const { interpretReply } = await import('../server/ai/support.js');
+    const { text } = interpretReply('It is $49.\n[[PRICING]]\n[[ESCALATE]]');
+    assert.equal(text, 'It is $49.');
+  });
+
+  test('the prompt says when not to hand off, routes attorneys by focus, and stays on topic', async () => {
+    const { SUPPORT_SYSTEM } = await import('../server/ai/support.js');
+    const { FIRM } = await import('../server/firm.js');
+    assert.match(SUPPORT_SYSTEM, /Do NOT hand off when you answered the question/);
+    assert.match(SUPPORT_SYSTEM, /Recommending an attorney is NOT a help desk handoff/);
+    assert.match(SUPPORT_SYSTEM, /Never write creative content/);
+    assert.match(SUPPORT_SYSTEM, new RegExp(`SaaS, cloud.*${FIRM.partners[0].name}`));
+    assert.match(SUPPORT_SYSTEM, new RegExp(`privacy.*${FIRM.partners[1].name}`));
+    assert.match(SUPPORT_SYSTEM, /When, and only when, your reply states prices/);
+  });
+});

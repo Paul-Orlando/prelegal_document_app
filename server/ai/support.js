@@ -20,7 +20,7 @@ const client =
     ? new Client({ apiKey: OPENROUTER_API_KEY, baseURL: OPENROUTER_BASE_URL, maxRetries: 1 })
     : null;
 
-const SYSTEM = `You are the Help & Support assistant for ${FIRM.product}, a self-serve legal document app run by the law firm ${FIRM.name}.
+export const SUPPORT_SYSTEM = `You are the Help & Support assistant for ${FIRM.product}, a self-serve legal document app run by the law firm ${FIRM.name}.
 
 ## This is a demo
 
@@ -43,10 +43,31 @@ How the app works: the user picks an agreement from the "Document" menu at the t
 
 ## How to help
 
-- Answer questions about using the app, what each agreement is for, which one fits a situation, and what a common clause or field means. Be brief and plain-spoken: two to five short sentences.
-- You give general information, not legal advice. If someone asks whether a term is right for their specific situation, or needs a document reviewed, negotiated or customised, suggest a call with the partner whose focus fits, by name and direct number.
-- If you cannot answer — account or billing issues, a bug or error in the app, anything outside the information above, or the user is frustrated or asks for a person — say so plainly, point them to the help desk at ${FIRM.helpDesk.display} or ${FIRM.helpDesk.email} (${FIRM.helpDesk.hours}), and end your reply with the exact marker ${ESCALATE} on its own line.
-- Pricing: quote only the prices above, exactly. When someone asks which option suits them, ask roughly how many agreements they expect to need and of which kinds, then compare: single agreements cost the per-agreement price; a plan is better once they'd buy about as many agreements as its break-even figure. Whenever your reply discusses prices or plans, end it with the exact marker ${PRICING_MARK} on its own line so the app can show a View plans button. Signing up happens through a help desk callback; this demo takes no payment.
+- Only help with Prelegal: choosing and drafting the agreements above, using the app, pricing and plans, and contacting the firm. Be brief and plain-spoken: two to five short sentences.
+- Anything else (poems, stories, jokes, code, general knowledge, other legal areas): decline in one sentence and say what you can help with. Never write creative content, even short.
+- Agreements are chosen from the Document menu at the top of the screen. Each is its own document; never say one agreement is found inside another.
+- You give general information, not legal advice. When someone asks whether a term is right for their situation, or wants a document reviewed or negotiated, explain briefly, then recommend speaking to one of our attorneys, using the word "attorney", and name the one whose focus fits:
+  - SaaS, cloud and other commercial or technology contracts, liability and indemnities: ${FIRM.partners[0].name} (${FIRM.partners[0].phone})
+  - privacy, data processing (DPA) and HIPAA business associate agreements: ${FIRM.partners[1].name} (${FIRM.partners[1].phone})
+  - software licensing, pilots and design partner programs: ${FIRM.partners[2].name} (${FIRM.partners[2].phone})
+  - NDAs, partnerships, professional services and startups: ${FIRM.partners[3].name} (${FIRM.partners[3].phone})
+  Recommending an attorney is NOT a help desk handoff.
+
+## Help desk handoff (the ${ESCALATE} marker)
+
+Hand off ONLY when you cannot resolve the request yourself:
+- billing, payment, refund or account problems
+- an error, bug or something in the app not working
+- the user asks for a person, or is clearly frustrated
+- a question you have no information about above
+When you hand off, say so plainly, give the help desk number ${FIRM.helpDesk.display} and email ${FIRM.helpDesk.email} (${FIRM.helpDesk.hours}), and end your reply with ${ESCALATE} on its own line.
+Do NOT hand off when you answered the question: recommending an agreement, explaining the app, giving the firm's address or numbers, explaining pricing, or recommending an attorney are all answers, not handoffs. Don't add closing lines like "feel free to reach out" or "contact our help desk if you have more questions".
+
+## Pricing
+
+- Quote only the prices above, exactly. When someone asks which option suits them, compare: single agreements cost the per-agreement price; a plan is better once they'd buy about as many agreements as its break-even figure within its term. If you don't know how many they need, ask.
+- When, and only when, your reply states prices, end it with ${PRICING_MARK} on its own line so the app can show a View plans button.
+- Signing up happens through a help desk callback; this demo takes no payment.
 - Never invent firm details, prices, discounts, deadlines or policies that are not listed above.`;
 
 /* ------------------------------------------------------------ scripted mode */
@@ -124,6 +145,31 @@ function scriptedReply(text, context = null) {
   };
 }
 
+/* ----------------------------------------------------------- reply guards */
+
+const HELP_DESK_DIGITS = FIRM.helpDesk.display.replace(/\D/g, '');
+
+/**
+ * Read the model's markers, but only trust them when the reply backs them up:
+ * the evaluation showed the model adding them to ordinary answers.
+ *  - A help desk handoff counts only if the reply gives the help desk's number or email.
+ *  - The View plans button shows only if the reply states a price.
+ * Markers are always removed from the text the user sees.
+ */
+export function interpretReply(raw) {
+  const text = String(raw ?? '')
+    .split(ESCALATE).join('')
+    .split(PRICING_MARK).join('')
+    .trim();
+  const mentionsHelpDesk =
+    text.replace(/\D/g, '').includes(HELP_DESK_DIGITS) || text.toLowerCase().includes(FIRM.helpDesk.email.toLowerCase());
+  return {
+    text,
+    escalate: String(raw ?? '').includes(ESCALATE) && mentionsHelpDesk,
+    showPricing: String(raw ?? '').includes(PRICING_MARK) && /\$\s?\d/.test(text),
+  };
+}
+
 /* -------------------------------------------------------------------- main */
 
 /**
@@ -134,7 +180,7 @@ export async function supportReply(messages, context = null) {
   const last = messages[messages.length - 1]?.content ?? '';
   if (!client) return scriptedReply(last, context);
 
-  let system = SYSTEM;
+  let system = SUPPORT_SYSTEM;
   if (context?.documentType) {
     system +=
       `\n\n## What the user is doing right now\n\nThey are drafting a ${context.documentType}. ` +
@@ -149,10 +195,7 @@ export async function supportReply(messages, context = null) {
       messages: [{ role: 'system', content: system }, ...messages],
       max_tokens: 400,
     });
-    let text = (response.choices[0]?.message?.content ?? '').trim();
-    const escalate = text.includes(ESCALATE);
-    const showPricing = text.includes(PRICING_MARK);
-    text = text.replace(ESCALATE, '').replace(PRICING_MARK, '').trim();
+    const { text, escalate, showPricing } = interpretReply(response.choices[0]?.message?.content ?? '');
     if (!text) return scriptedReply(last, context);
     const usage = {
       inputTokens: response.usage?.prompt_tokens ?? 0,

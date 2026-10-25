@@ -5,3 +5,8 @@ node_modules/
 
 # Runner checks with the scripted stand-in are not model results
 eval/results/*scripted*
+
+# Patch files and sample downloads dropped in the project folder
+*.patch
+/Sample-*
+/apply-with-claude-code.md
