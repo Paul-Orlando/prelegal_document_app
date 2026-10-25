@@ -88,6 +88,15 @@ npm test
 
 The automated tests run against a throwaway database with the scripted interviewer, so they need no API key and cost nothing. They cover guest sessions and isolation between visitors, documents and the demo limits, the interview flow, the support assistant and help desk handoff, callback requests, pricing, PDF and Word exports for all 11 agreements, clause numbering, input safety, security headers, the fallback when the AI service is down, and that no keys or real phone numbers are in the repository.
 
+## Evaluate the assistant
+
+```
+npm run eval -- --limit 3 --runs 1      # smoke test, about $0.01
+npm run eval                            # all 45 questions, 3 runs each
+```
+
+The evaluation asks the real model 45 graded questions about drafting, pricing, help desk handoffs and guardrails, grades the interviewer on what it actually saved to the document, and writes a report with pass rate, consistency, time and cost to `eval/results/`. On Windows, `eval.bat` does the same. See `eval/README.md`, and `docs/TESTING.md` for the full testing plan, user-test kit and demo script.
+
 ## Firm details
 
 The firm shown in the app (Ashford & Kane LLP, its address, phone numbers, attorneys and help desk) is **fictional demo data**. Edit `server/firm.js` to replace it; the UI and the support assistant both read from that one file.

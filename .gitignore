@@ -2,3 +2,6 @@ node_modules/
 .data/
 .env
 *.log
+
+# Runner checks with the scripted stand-in are not model results
+eval/results/*scripted*
