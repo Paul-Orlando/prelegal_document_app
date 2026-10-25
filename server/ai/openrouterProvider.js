@@ -4,7 +4,8 @@ import { SYSTEM_BASE, buildStateBlock } from './prompt.js';
 import { buildTools, toAction } from './tools.js';
 
 const client = new Client({
-  apiKey: OPENROUTER_API_KEY || undefined,
+  // Placeholder keeps the client constructible in scripted mode; it is never called then.
+  apiKey: OPENROUTER_API_KEY || 'not-configured',
   baseURL: 'https://openrouter.ai/api/v1',
 });
 

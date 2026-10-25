@@ -42,6 +42,18 @@ db.exec(`
     created_at  TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS support_tickets (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+    name       TEXT NOT NULL,
+    phone      TEXT,
+    email      TEXT,
+    topic      TEXT,
+    message    TEXT,
+    status     TEXT NOT NULL DEFAULT 'open',
+    created_at TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_documents_user ON documents(user_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS idx_messages_document ON messages(document_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
@@ -211,4 +223,25 @@ export function listMessages(documentId) {
   return db
     .prepare('SELECT id, role, content, created_at AS createdAt FROM messages WHERE document_id = ? ORDER BY created_at, rowid')
     .all(documentId);
+}
+
+/* ---------------------------------------------------------------- support */
+
+/** Callback requests for the help desk. Ids are short and readable, e.g. PL-48213. */
+export function createSupportTicket(userId, { name, phone, email, topic, message }) {
+  const ticket = {
+    id: `PL-${crypto.randomInt(10000, 99999)}`,
+    user_id: userId,
+    name,
+    phone,
+    email,
+    topic,
+    message,
+    created_at: now(),
+  };
+  db.prepare(
+    `INSERT INTO support_tickets (id, user_id, name, phone, email, topic, message, created_at)
+     VALUES (@id, @user_id, @name, @phone, @email, @topic, @message, @created_at)`,
+  ).run(ticket);
+  return { id: ticket.id, topic, createdAt: ticket.created_at };
 }

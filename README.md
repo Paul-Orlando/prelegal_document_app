@@ -11,21 +11,18 @@ An AI chat that interviews you about a legal agreement and builds it from Common
 
 The app is deployed and running with OpenRouter AI integration.
 
-### Demo Account Instructions
+### Demo mode — no sign-in
 
-This is a **demo application** — no verification required. Sign up with (create an account):
-- Any name
-- Any email (doesn't need to be real)
-- Any password (minimum 8 characters)
-
-Every user gets their own private document set. Create multiple test accounts to see document isolation in action.
+There is no login. Each browser is given its own guest workspace automatically the first time it opens the app, so drafts stay private to that browser.
 
 ## Features
 
 - 📋 11 supported agreement types
 - 🤖 Multi-turn AI interview
 - 📥 Export as Markdown, PDF, or Word
-- 🔐 User authentication & document isolation
+- 🧭 Agreement picker in the top bar, one question at a time
+- 🛟 Help & support panel: firm phone numbers, attorneys, an AI support assistant that hands off to the help desk, and callback requests
+- 🔐 Per-browser guest workspaces (no sign-in)
 - 🚀 Deploy-ready with Railway
 
 ## Deploy Your Own
@@ -38,9 +35,10 @@ Every user gets their own private document set. Create multiple test accounts to
 
 ## What it does
 
-- Sign up, sign in — every user has their own private set of documents.
-- Start a new document and describe what you need in plain language ("I need an NDA", "we're buying a SaaS product and need a contract").
-- Prelegal asks about the details it needs, one or two at a time, and fills them into a live document as you answer.
+- Pick an agreement from the menu in the top bar (or from the list on the home page).
+- Prelegal asks one question at a time and fills each answer into the document, shown live on the right. Earlier questions aren't shown, just the current one and a confirmation of what was recorded.
+- Drafts save automatically and are listed under **Drafts** in the top bar.
+- **Help & support** (top right) has the firm's main line and help desk, the attorney directory, an AI support assistant, and a callback request form. When the assistant can't answer, it points the user to the help desk.
 - If you ask for something it doesn't support, it says so and offers the closest thing it can generate instead — it never fakes an unsupported document.
 - Preview the assembled document at any point, and download it as Markdown, PDF, or Word (.docx) once it's ready.
 
@@ -78,7 +76,13 @@ starts the server in the background and writes its PID to `.data/server.pid`. Us
 
 Only the Mutual NDA repo publishes a fillable cover page upstream — every other Common Paper agreement is Standard Terms only, so Prelegal authors its own cover page for those, built from the variables each agreement's Standard Terms reference.
 
+## Firm details
+
+The firm shown in the app (Ashford & Kane LLP, its address, phone numbers, attorneys and help desk) is **fictional demo data**. Edit `server/firm.js` to replace it; the UI and the support assistant both read from that one file.
+
 ## Known gaps
+
+- Callback requests are stored in the `support_tickets` table but nothing notifies anyone yet; wire it to email or your help desk tool before real use.
 
 - Passwords are hashed with scrypt and sessions use random-token cookies — solid for a small deployment, but there's no rate limiting, email verification, or password reset flow.
 - No test suite yet; the flows above were verified manually end-to-end (registration, multi-user isolation, chat interview, preview, download) for this build.

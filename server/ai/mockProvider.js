@@ -36,7 +36,16 @@ function ask(spec, values) {
   return text;
 }
 
-export async function runTurn({ specId, values, history, userMessage, applyAction }) {
+export async function runTurn({ specId, values, history, userMessage, applyAction, kickoff = false }) {
+  // Opening question after the user picks a document type from the menu.
+  if (kickoff && specId) {
+    const spec = getSpec(specId);
+    return {
+      text: `Let's draft your **${spec.name}**. ${spec.description.split('.')[0]}.\n\n${ask(spec, values)}`,
+      actions: [],
+    };
+  }
+
   const input = String(userMessage ?? '').trim();
   const lower = input.toLowerCase();
   const actions = [];

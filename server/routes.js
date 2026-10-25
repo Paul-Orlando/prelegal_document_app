@@ -5,22 +5,28 @@ import {
   createSession,
   createUser,
   deleteDocument,
-  deleteSession,
-  findUserByEmail,
+  createSupportTicket,
   getDocument,
   getSessionUser,
   listDocuments,
   listMessages,
   updateDocument,
-  verifyPassword,
 } from './db.js';
 import { getSpec, isKnownField, listSpecs, missingRequiredFields } from './documentSpecs.js';
 import { documentFilename, renderCoverPage, renderDocument } from './render.js';
 import { renderDocxBuffer, renderPdfBuffer } from './exporters.js';
 import { activeMode, runTurn } from './ai/index.js';
 import { checkRateLimit } from './rateLimit.js';
+import { supportReply } from './ai/support.js';
+import { FIRM } from './firm.js';
+import crypto from 'node:crypto';
+import MarkdownIt from 'markdown-it';
 
-const NEW_DOCUMENT_LIMIT = 3;
+// Preview renderer: raw HTML disabled so user-entered values can't inject markup.
+const previewMd = new MarkdownIt({ html: false, linkify: false });
+const stripTags = (text) => text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+
+const NEW_DOCUMENT_LIMIT = 30;
 const NEW_DOCUMENT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export const router = express.Router();
@@ -42,10 +48,23 @@ function parseCookies(header = '') {
   );
 }
 
+/**
+ * Demo mode: no sign-in. Each browser gets its own guest user the first time
+ * it calls the API, tracked by a long-lived session cookie, so drafts stay
+ * private to that browser without anyone creating an account.
+ */
 function requireAuth(req, res, next) {
-  const token = parseCookies(req.headers.cookie)[COOKIE];
-  const user = getSessionUser(token);
-  if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  let token = parseCookies(req.headers.cookie)[COOKIE];
+  let user = getSessionUser(token);
+  if (!user) {
+    user = createUser({
+      email: `guest-${crypto.randomUUID()}@guest.prelegal.local`,
+      displayName: 'Guest',
+      password: crypto.randomBytes(24).toString('hex'),
+    });
+    token = createSession(user.id);
+    setSessionCookie(res, token);
+  }
   req.user = user;
   req.sessionToken = token;
   next();
@@ -54,7 +73,7 @@ function requireAuth(req, res, next) {
 function setSessionCookie(res, token) {
   res.setHeader(
     'Set-Cookie',
-    `${COOKIE}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 14}`,
+    `${COOKIE}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 180}`,
   );
 }
 
@@ -77,44 +96,10 @@ function documentView(doc) {
   };
 }
 
-/* -------------------------------------------------------------------- auth */
+/* ------------------------------------------------------------------ session */
 
-router.post('/auth/register', (req, res) => {
-  const { email, password, displayName } = req.body ?? {};
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
-  if (String(password).length < 8)
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
-  if (findUserByEmail(email)) return res.status(409).json({ error: 'That email is already registered.' });
-
-  const user = createUser({
-    email,
-    password,
-    displayName: displayName || String(email).split('@')[0],
-  });
-  setSessionCookie(res, createSession(user.id));
-  res.status(201).json({ user });
-});
-
-router.post('/auth/login', (req, res) => {
-  const { email, password } = req.body ?? {};
-  const row = findUserByEmail(email ?? '');
-  if (!row || !verifyPassword(row, String(password ?? ''))) {
-    return res.status(401).json({ error: 'Incorrect email or password.' });
-  }
-  setSessionCookie(res, createSession(row.id));
-  res.json({ user: { id: row.id, email: row.email, displayName: row.display_name } });
-});
-
-router.post('/auth/logout', (req, res) => {
-  const token = parseCookies(req.headers.cookie)[COOKIE];
-  if (token) deleteSession(token);
-  res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
-  res.json({ ok: true });
-});
-
-router.get('/auth/me', (req, res) => {
-  const user = getSessionUser(parseCookies(req.headers.cookie)[COOKIE]);
-  res.json({ user: user ?? null, aiMode: activeMode });
+router.get('/session', requireAuth, (req, res) => {
+  res.json({ user: req.user, aiMode: activeMode });
 });
 
 /* ----------------------------------------------------------------- catalog */
@@ -192,12 +177,19 @@ router.post('/documents/:id/messages', requireAuth, async (req, res, next) => {
     const doc = getDocument(req.user.id, req.params.id);
     if (!doc) return res.status(404).json({ error: 'Document not found.' });
 
-    const content = String(req.body?.content ?? '').trim();
+    // kickoff: the user just picked a document type from the menu — ask the
+    // first question without recording a user message.
+    const kickoff = Boolean(req.body?.kickoff);
+    let content = String(req.body?.content ?? '').trim();
+    if (kickoff) {
+      if (!doc.specId) return res.status(400).json({ error: 'Choose a document type first.' });
+      content = `(The user just chose "${getSpec(doc.specId).name}" from the document menu. Do not call set_document_type. Welcome them in one short sentence and ask the first question.)`;
+    }
     if (!content) return res.status(400).json({ error: 'Message cannot be empty.' });
     if (content.length > 8000) return res.status(400).json({ error: 'Message is too long.' });
 
     const history = listMessages(doc.id).map((m) => ({ role: m.role, content: m.content }));
-    const userMessage = addMessage(doc.id, 'user', content);
+    const userMessage = kickoff ? null : addMessage(doc.id, 'user', content);
 
     // Tool calls mutate the document; each action is persisted immediately so
     // the next model round sees current state.
@@ -237,13 +229,14 @@ router.post('/documents/:id/messages', requireAuth, async (req, res, next) => {
       history,
       userMessage: content,
       applyAction,
+      kickoff,
     });
 
     const assistantMessage = addMessage(doc.id, 'assistant', text);
     const updated = getDocument(req.user.id, doc.id);
 
     res.json({
-      messages: [userMessage, assistantMessage],
+      messages: userMessage ? [userMessage, assistantMessage] : [assistantMessage],
       document: documentView(updated),
       degraded: Boolean(degraded),
     });
@@ -259,9 +252,11 @@ router.get('/documents/:id/preview', requireAuth, (req, res) => {
   if (!doc) return res.status(404).json({ error: 'Document not found.' });
   if (!doc.specId) return res.status(400).json({ error: 'No document type chosen yet.' });
 
+  const full = renderDocument(doc.specId, doc.values);
   res.json({
     coverPage: renderCoverPage(getSpec(doc.specId), doc.values),
-    full: renderDocument(doc.specId, doc.values),
+    full,
+    html: previewMd.render(stripTags(full)),
   });
 });
 
@@ -302,4 +297,47 @@ router.get('/documents/:id/download', requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+/* ---------------------------------------------------------- help & support */
+
+router.get('/support/firm', (_req, res) => {
+  res.json({ firm: FIRM });
+});
+
+router.post('/support/chat', async (req, res, next) => {
+  try {
+    const limit = checkRateLimit(`support:${req.ip}`, 60, 60 * 60 * 1000);
+    if (!limit.allowed) {
+      return res.status(429).json({
+        error: `Too many questions for now. Call the help desk at ${FIRM.helpDesk.display} instead.`,
+      });
+    }
+    const raw = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    const messages = raw
+      .slice(-12)
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant'))
+      .map((m) => ({ role: m.role, content: String(m.content ?? '').slice(0, 2000) }));
+    if (!messages.length || messages[messages.length - 1].role !== 'user') {
+      return res.status(400).json({ error: 'Ask a question first.' });
+    }
+    res.json(await supportReply(messages));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/support/tickets', requireAuth, (req, res) => {
+  const { name, phone, email, topic, message } = req.body ?? {};
+  if (!String(name ?? '').trim()) return res.status(400).json({ error: 'Add your name so we know who to ask for.' });
+  if (!String(phone ?? '').trim() && !String(email ?? '').trim())
+    return res.status(400).json({ error: 'Add a phone number or email so the help desk can reach you.' });
+  const ticket = createSupportTicket(req.user.id, {
+    name: String(name).slice(0, 200),
+    phone: String(phone ?? '').slice(0, 50),
+    email: String(email ?? '').slice(0, 200),
+    topic: String(topic ?? 'General question').slice(0, 100),
+    message: String(message ?? '').slice(0, 4000),
+  });
+  res.status(201).json({ ticket, helpDesk: FIRM.helpDesk });
 });
